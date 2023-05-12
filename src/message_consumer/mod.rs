@@ -1,5 +1,5 @@
-use bls_signatures::Signature;
 use crate::price_provider::Price;
+use bls_signatures::Signature;
 
 pub mod log;
 
