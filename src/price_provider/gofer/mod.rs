@@ -1,5 +1,5 @@
 use std::process::Command;
-use crate::price_provider::{Price, PriceProvider};
+use crate::price_provider::{PRECISION_FACTOR, Price, PriceProvider};
 
 mod types;
 
@@ -28,10 +28,10 @@ impl PriceProvider for GoferPriceProvider {
             .arg("ETH/USD")
             .output()
             .expect("failed to execute process");
+        // TODO: Replace panics with proper error handling
         let string_output = String::from_utf8(output.stdout).expect("Error decoding");
-        println!("string_output: {}", string_output);
         let data: types::Root = serde_json::from_str(&string_output).expect("Error parsing");
-        let value = data.price;
+        let value = (data.price * PRECISION_FACTOR as f64) as u64;
         Some(Price {
             value
         })
