@@ -2051,6 +2051,7 @@ dependencies = [
  "ethereum_ssz",
  "ethers",
  "eyre",
+ "futures",
  "rand",
  "rand_chacha",
  "serde",
