@@ -1,3 +1,8 @@
+mod price_provider;
+use price_provider::{PriceProvider, gofer::GoferPriceProvider};
+
 fn main() {
-    println!("Hello, world!");
+    let gofer = GoferPriceProvider::new(None);
+    let price = gofer.get_price();
+    println!("Price: {:?}", price);
 }
