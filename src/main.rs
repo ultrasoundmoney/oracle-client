@@ -17,10 +17,7 @@ async fn run_oracle_node(
     mut epoch_stream: impl Stream<Item = u64> + std::marker::Unpin,
 ) -> Result<()> {
     while let Some(epoch_number) = epoch_stream.next().await {
-        println!(
-            "Reporting price for epoch: {}",
-            epoch_number
-        );
+        println!("Reporting price for epoch: {}", epoch_number);
         let price = price_provider.get_price().expect("Error getting price");
         let price_ssz: Vec<u8> = price.as_ssz_bytes();
         let signature = signature_provider.sign(&price_ssz).expect("Error signing");
@@ -47,9 +44,18 @@ async fn main() -> Result<()> {
             .await?;
     // Ensures this program exits after a few blocks blocks for easier testing, in production the stream should run forever
     let num_of_blocks_to_run = 3;
-    let block_stream = provider.subscribe_blocks().await?.take(num_of_blocks_to_run);
+    let block_stream = provider
+        .subscribe_blocks()
+        .await?
+        .take(num_of_blocks_to_run);
     let epoch_stream = block_stream.map(|block| block.number.unwrap().as_u64());
 
-    run_oracle_node(price_provider, signature_provider, message_consumer, epoch_stream).await?;
+    run_oracle_node(
+        price_provider,
+        signature_provider,
+        message_consumer,
+        epoch_stream,
+    )
+    .await?;
     Ok(())
 }
