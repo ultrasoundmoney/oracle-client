@@ -3,8 +3,8 @@ use eyre::Result;
 use futures::stream::Stream;
 use ssz::Encode;
 
-mod message_consumer;
-use message_consumer::{log::LogMessageConsumer, MessageConsumer, PriceMessage};
+mod message_broadcaster;
+use message_broadcaster::{log::LogMessageBroadcaster, MessageBroadcaster, PriceMessage};
 mod price_provider;
 use price_provider::{gofer::GoferPriceProvider, PriceProvider};
 mod signature_provider;
@@ -13,7 +13,7 @@ use signature_provider::{private_key::PrivateKeySignatureProvider, SignatureProv
 async fn run_oracle_node(
     price_provider: impl PriceProvider,
     signature_provider: impl SignatureProvider,
-    message_consumer: impl MessageConsumer,
+    message_broadcaster: impl MessageBroadcaster,
     mut epoch_stream: impl Stream<Item = u64> + std::marker::Unpin,
 ) -> Result<()> {
     while let Some(epoch_number) = epoch_stream.next().await {
@@ -22,7 +22,7 @@ async fn run_oracle_node(
         let price_ssz: Vec<u8> = price.as_ssz_bytes();
         let signature = signature_provider.sign(&price_ssz).expect("Error signing");
         let message = PriceMessage { price, signature };
-        message_consumer.consume_message(message);
+        message_broadcaster.broadcast(message);
     }
 
     Ok(())
@@ -35,8 +35,8 @@ async fn main() -> Result<()> {
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
 
-    // TODO: Replace with a consumer that reports the results to our server
-    let message_consumer = LogMessageConsumer {};
+    // TODO: Replace with a broadcaster that reports the results to our server
+    let message_broadcaster = LogMessageBroadcaster {};
 
     // TODO: Replace with stream that returns the current epoch instead of mined blocknumbers
     let provider =
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     run_oracle_node(
         price_provider,
         signature_provider,
-        message_consumer,
+        message_broadcaster,
         epoch_stream,
     )
     .await?;

@@ -9,6 +9,6 @@ pub struct PriceMessage {
     pub signature: Signature,
 }
 
-pub trait MessageConsumer {
-    fn consume_message(&self, msg: PriceMessage);
+pub trait MessageBroadcaster {
+    fn broadcast(&self, msg: PriceMessage);
 }
