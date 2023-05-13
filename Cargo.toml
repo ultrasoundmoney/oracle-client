@@ -1,0 +1,19 @@
+[package]
+name = "oracle-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bls-signatures = "0.14.0"
+eth2_ssz_derive = "0.3.0"
+ethereum_ssz = "0.5.2"
+ethers = {version = "2.0.4", features = ["ws"]}
+eyre = "0.6.8"
+futures = "0.3.28"
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+serde = {version = "1.0.163", features = ["derive"]}
+serde_json = "1.0.96"
+tokio = {version= "1.28.1", features = ["macros"]}
