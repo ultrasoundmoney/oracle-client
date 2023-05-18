@@ -1,3 +1,5 @@
+use eyre::Result;
+
 use crate::price_provider::Price;
 use bls_signatures::Signature;
 
@@ -10,5 +12,5 @@ pub struct PriceMessage {
 }
 
 pub trait MessageBroadcaster {
-    fn broadcast(&self, msg: PriceMessage);
+    fn broadcast(&self, msg: PriceMessage) -> Result<()>;
 }

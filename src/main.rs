@@ -1,10 +1,10 @@
-use eyre::Result;
+use eyre::{WrapErr, Result};
 use ssz::Encode;
 
 mod message_broadcaster;
 use message_broadcaster::{log::LogMessageBroadcaster, MessageBroadcaster, PriceMessage};
 mod price_provider;
-use price_provider::{gofer::GoferPriceProvider, PriceProvider};
+use price_provider::{gofer::GoferPriceProvider, PRECISION_FACTOR, PriceProvider};
 mod signature_provider;
 use signature_provider::{private_key::PrivateKeySignatureProvider, SignatureProvider};
 mod slot_provider;
@@ -17,26 +17,35 @@ async fn run_oracle_node(
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
-        .run_for_every_slot(move |slot_number| {
-            println!("Reporting price for slot: {:?}", slot_number);
-            let price = price_provider.get_price().expect("Error getting price");
+        .run_for_every_slot(move |_slot| -> Result<()> {
+            let price = price_provider.get_price().wrap_err("Failed to get price data")?;
+            log::info!("Sucessfully obtained current Eth Price: {:?}", price.value as f64 / PRECISION_FACTOR as f64);
             let price_ssz: Vec<u8> = price.as_ssz_bytes();
-            let signature = signature_provider.sign(&price_ssz).expect("Error signing");
+            log::debug!("Succesfully serialized price data: {:?}", price_ssz);
+            let signature = signature_provider.sign(&price_ssz).wrap_err("Failed to sign serialized price data")?;
+            log::debug!("Succesfully signed serialized prize data: {:?}", signature);
             let message = PriceMessage { price, signature };
-            message_broadcaster.broadcast(message);
+            message_broadcaster.broadcast(message).wrap_err("Failed to broadcast message")?;
+            Ok(())
         })
         .await
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let price_provider = GoferPriceProvider::new(None);
+    env_logger::init();
+
+    let price_provider = GoferPriceProvider::new(None)?;
+    log::info!("Initialized price_provider");
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
+    log::info!("Initialized signature_provider");
     // TODO: Replace with a broadcaster that reports the results to our server
     let message_broadcaster = LogMessageBroadcaster {};
+    log::info!("Initialized message_broadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
-    let slot_provider = MinedBlocksSlotProvider::new().await;
+    let slot_provider = MinedBlocksSlotProvider::new().await?;
+    log::info!("Initialized slot_provider");
 
     run_oracle_node(
         price_provider,

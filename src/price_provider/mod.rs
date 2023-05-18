@@ -1,3 +1,4 @@
+use eyre::Result;
 use ssz_derive::{Decode, Encode};
 
 pub mod gofer;
@@ -13,5 +14,5 @@ pub struct Price {
 }
 
 pub trait PriceProvider {
-    fn get_price(&self) -> Option<Price>;
+    fn get_price(&self) -> Result<Price>;
 }
