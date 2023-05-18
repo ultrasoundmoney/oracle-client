@@ -25,9 +25,14 @@ impl SlotProvider for MinedBlocksSlotProvider {
     {
         Box::new(Box::pin(async move {
             let block_stream = self.provider.subscribe_blocks().await?;
-            let mut slot_stream = block_stream.map(|block| -> Result<Slot>{ Ok(Slot {
-                number: block.number.ok_or(Error::msg("block.number is none"))?.as_u64(),
-            })});
+            let mut slot_stream = block_stream.map(|block| -> Result<Slot> {
+                Ok(Slot {
+                    number: block
+                        .number
+                        .ok_or(Error::msg("block.number is none"))?
+                        .as_u64(),
+                })
+            });
             while let Some(slot_result) = slot_stream.next().await {
                 let slot = match slot_result {
                     Ok(slot) => slot,

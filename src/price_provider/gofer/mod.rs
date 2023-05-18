@@ -15,7 +15,7 @@ impl GoferPriceProvider {
                 gofer_cmd: cmd.to_string(),
             }),
             None => Ok(GoferPriceProvider {
-                gofer_cmd: std::env::var("GOFER_CMD")?
+                gofer_cmd: std::env::var("GOFER_CMD")?,
             }),
         }
     }
