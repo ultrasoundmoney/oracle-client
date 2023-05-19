@@ -23,7 +23,6 @@ async fn run_oracle_node(
             log::info!("Sucessfully obtained current Eth Price: {:?}", price.value as f64 / PRECISION_FACTOR as f64);
             let oracle_message = message_generator.generate_oracle_message(price, slot).wrap_err("Failed to generated signed price message")?;
             log::info!("Sucessfully generated signed price message");
-            log::debug!("signed_price_message: {:?}", oracle_message);
             message_broadcaster.broadcast(oracle_message).wrap_err("Failed to broadcast message")?;
             Ok(())
         })

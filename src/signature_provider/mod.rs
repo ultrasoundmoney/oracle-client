@@ -1,6 +1,6 @@
 use eyre::Result;
 
-use bls_signatures::Signature;
+use bls::Signature;
 pub mod private_key;
 
 pub trait SignatureProvider {

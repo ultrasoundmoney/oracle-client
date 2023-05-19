@@ -2,7 +2,7 @@ use eyre::Result;
 use ssz_derive::{Decode, Encode};
 
 use crate::price_provider::Price;
-use bls_signatures::Signature;
+use bls::Signature;
 
 pub mod log;
 

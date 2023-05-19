@@ -1,18 +1,16 @@
 use eyre::Result;
+use sha3::{Sha3_256, Digest};
 
 use crate::signature_provider::SignatureProvider;
-use bls_signatures::{PrivateKey, Signature};
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
+use bls::{Hash256, SecretKey, Signature};
 
 pub struct PrivateKeySignatureProvider {
-    private_key: PrivateKey,
+    private_key: SecretKey,
 }
 
 impl PrivateKeySignatureProvider {
     pub fn random() -> PrivateKeySignatureProvider {
-        let mut rng = ChaCha8Rng::seed_from_u64(12);
-        let private_key = PrivateKey::generate(&mut rng);
+        let private_key = SecretKey::random();
         log::debug!(
             "Generated random private key associated with public key: {:?}",
             private_key.public_key()
@@ -23,6 +21,7 @@ impl PrivateKeySignatureProvider {
 
 impl SignatureProvider for PrivateKeySignatureProvider {
     fn sign(&self, msg: &[u8]) -> Result<Signature> {
-        Ok(self.private_key.sign(msg))
+        let msg_hash = Hash256::from_slice(&Sha3_256::digest(msg));
+        Ok(self.private_key.sign(msg_hash))
     }
 }
