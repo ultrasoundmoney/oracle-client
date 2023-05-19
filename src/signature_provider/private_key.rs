@@ -1,5 +1,5 @@
 use eyre::Result;
-use sha3::{Sha3_256, Digest};
+use sha3::{Digest, Sha3_256};
 
 use crate::signature_provider::SignatureProvider;
 use bls::{Hash256, PublicKey, SecretKey, Signature};

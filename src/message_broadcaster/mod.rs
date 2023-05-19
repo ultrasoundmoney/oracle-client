@@ -5,8 +5,8 @@ use ssz_derive::{Decode, Encode};
 use crate::price_provider::Price;
 use bls::{PublicKey, Signature};
 
-pub mod log;
 pub mod json;
+pub mod log;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OracleMessage {

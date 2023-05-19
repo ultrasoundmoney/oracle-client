@@ -1,11 +1,11 @@
-use eyre::{WrapErr, Result};
+use eyre::{Result, WrapErr};
 
 mod message_broadcaster;
 use message_broadcaster::{json::JsonFileMessageBroadcaster, MessageBroadcaster};
 mod message_generator;
 use message_generator::MessageGenerator;
 mod price_provider;
-use price_provider::{gofer::GoferPriceProvider, PRECISION_FACTOR, PriceProvider};
+use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR};
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
@@ -19,11 +19,20 @@ async fn run_oracle_node(
 ) -> Result<()> {
     slot_provider
         .run_for_every_slot(move |slot| -> Result<()> {
-            let price = price_provider.get_price().wrap_err("Failed to get price data")?;
-            log::info!("Sucessfully obtained current Eth Price: {:?}", price.value as f64 / PRECISION_FACTOR as f64);
-            let oracle_message = message_generator.generate_oracle_message(price, slot).wrap_err("Failed to generated signed price message")?;
+            let price = price_provider
+                .get_price()
+                .wrap_err("Failed to get price data")?;
+            log::info!(
+                "Sucessfully obtained current Eth Price: {:?}",
+                price.value as f64 / PRECISION_FACTOR as f64
+            );
+            let oracle_message = message_generator
+                .generate_oracle_message(price, slot)
+                .wrap_err("Failed to generated signed price message")?;
             log::info!("Sucessfully generated signed price message");
-            message_broadcaster.broadcast(oracle_message).wrap_err("Failed to broadcast message")?;
+            message_broadcaster
+                .broadcast(oracle_message)
+                .wrap_err("Failed to broadcast message")?;
             Ok(())
         })
         .await
