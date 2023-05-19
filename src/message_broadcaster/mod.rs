@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 
 use crate::price_provider::Price;
-use bls::Signature;
+use bls::{PublicKey, Signature};
 
 pub mod log;
 pub mod json;
@@ -12,6 +12,7 @@ pub mod json;
 pub struct OracleMessage {
     pub value_message: SignedPriceValueMessage,
     pub interval_inclusion_messages: Vec<SignedIntervalInclusionMessage>,
+    pub validator_public_key: PublicKey,
 }
 
 #[derive(Debug, Decode, Encode, Serialize, Deserialize)]

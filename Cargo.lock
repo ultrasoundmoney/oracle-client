@@ -4091,23 +4091,3 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "ethereum-consensus"
-version = "0.1.1"
-source = "git+https://github.com/ralexstokes//ethereum-consensus?rev=9b0ee0a8a45b968c8df5e7e64ea1c094e16f053d#9b0ee0a8a45b968c8df5e7e64ea1c094e16f053d"
-
-[[patch.unused]]
-name = "mev-rs"
-version = "0.2.1"
-source = "git+https://github.com/ralexstokes//mev-rs?rev=7813d4a4a564e0754e9aaab2d95520ba437c3889#7813d4a4a564e0754e9aaab2d95520ba437c3889"
-
-[[patch.unused]]
-name = "arbitrary"
-version = "1.3.0"
-source = "git+https://github.com/michaelsproul/arbitrary?rev=f002b99989b561ddce62e4cf2887b0f8860ae991#f002b99989b561ddce62e4cf2887b0f8860ae991"
-
-[[patch.unused]]
-name = "ssz-rs"
-version = "0.8.0"
-source = "git+https://github.com/ralexstokes//ssz-rs?rev=adf1a0b14cef90b9536f28ef89da1fab316465e1#adf1a0b14cef90b9536f28ef89da1fab316465e1"

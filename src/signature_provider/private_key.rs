@@ -2,7 +2,7 @@ use eyre::Result;
 use sha3::{Sha3_256, Digest};
 
 use crate::signature_provider::SignatureProvider;
-use bls::{Hash256, SecretKey, Signature};
+use bls::{Hash256, PublicKey, SecretKey, Signature};
 
 pub struct PrivateKeySignatureProvider {
     private_key: SecretKey,
@@ -23,5 +23,9 @@ impl SignatureProvider for PrivateKeySignatureProvider {
     fn sign(&self, msg: &[u8]) -> Result<Signature> {
         let msg_hash = Hash256::from_slice(&Sha3_256::digest(msg));
         Ok(self.private_key.sign(msg_hash))
+    }
+
+    fn get_public_key(&self) -> Result<PublicKey> {
+        Ok(self.private_key.public_key())
     }
 }

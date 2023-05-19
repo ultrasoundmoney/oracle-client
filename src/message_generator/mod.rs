@@ -24,9 +24,11 @@ impl MessageGenerator {
             let slot_number = slot.number;
             let interval_inclusion_messages = self.generate_signed_interval_inclusion_messages(price.value, slot_number).wrap_err("Failed to generate interval_inclusion_messages")?;
             let value_message = self.generate_signed_price_value_message(price, slot_number).wrap_err("Failed to generate value message")?;
+            let validator_public_key = self.signature_provider.get_public_key().wrap_err("Failed to get public key")?;
             Ok(OracleMessage {
                 value_message,
                 interval_inclusion_messages,
+                validator_public_key,
             })
     }
 

@@ -20,14 +20,3 @@ serde = {version = "1.0.163", features = ["derive"]}
 serde_json = "1.0.96"
 tokio = {version= "1.28.1", features = ["macros"]}
 sha3 = "0.10.8"
-
-[patch]
-[patch.crates-io]
-arbitrary = { git = "https://github.com/michaelsproul/arbitrary", rev="f002b99989b561ddce62e4cf2887b0f8860ae991" }
-
-[patch."https://github.com/ralexstokes/mev-rs"]
-mev-rs = { git = "https://github.com/ralexstokes//mev-rs", rev = "7813d4a4a564e0754e9aaab2d95520ba437c3889" }
-[patch."https://github.com/ralexstokes/ethereum-consensus"]
-ethereum-consensus = { git = "https://github.com/ralexstokes//ethereum-consensus", rev = "9b0ee0a8a45b968c8df5e7e64ea1c094e16f053d" }
-[patch."https://github.com/ralexstokes/ssz-rs"]
-ssz-rs = { git = "https://github.com/ralexstokes//ssz-rs", rev = "adf1a0b14cef90b9536f28ef89da1fab316465e1" }
