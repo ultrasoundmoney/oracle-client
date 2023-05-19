@@ -1,40 +1,30 @@
-use eyre::{Result, WrapErr};
-use ssz::Encode;
+use eyre::{WrapErr, Result};
 
 mod message_broadcaster;
-use message_broadcaster::{log::LogMessageBroadcaster, MessageBroadcaster, PriceMessage};
+use message_broadcaster::{log::LogMessageBroadcaster, MessageBroadcaster};
+mod message_generator;
+use message_generator::MessageGenerator;
 mod price_provider;
-use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR};
+use price_provider::{gofer::GoferPriceProvider, PRECISION_FACTOR, PriceProvider};
 mod signature_provider;
-use signature_provider::{private_key::PrivateKeySignatureProvider, SignatureProvider};
+use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
 use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
 
 async fn run_oracle_node(
     price_provider: impl PriceProvider + 'static,
-    signature_provider: impl SignatureProvider + 'static,
+    message_generator: MessageGenerator,
     message_broadcaster: impl MessageBroadcaster + 'static,
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
         .run_for_every_slot(move |_slot| -> Result<()> {
-            let price = price_provider
-                .get_price()
-                .wrap_err("Failed to get price data")?;
-            log::info!(
-                "Sucessfully obtained current Eth Price: {:?}",
-                price.value as f64 / PRECISION_FACTOR as f64
-            );
-            let price_ssz: Vec<u8> = price.as_ssz_bytes();
-            log::debug!("Succesfully serialized price data: {:?}", price_ssz);
-            let signature = signature_provider
-                .sign(&price_ssz)
-                .wrap_err("Failed to sign serialized price data")?;
-            log::debug!("Succesfully signed serialized prize data: {:?}", signature);
-            let message = PriceMessage { price, signature };
-            message_broadcaster
-                .broadcast(message)
-                .wrap_err("Failed to broadcast message")?;
+            let price = price_provider.get_price().wrap_err("Failed to get price data")?;
+            log::info!("Sucessfully obtained current Eth Price: {:?}", price.value as f64 / PRECISION_FACTOR as f64);
+            let signed_price_message = message_generator.generate_signed_price_message(price).wrap_err("Failed to generated signed price message")?;
+            log::info!("Sucessfully generated signed price message");
+            log::debug!("signed_price_message: {:?}", signed_price_message);
+            message_broadcaster.broadcast(signed_price_message).wrap_err("Failed to broadcast message")?;
             Ok(())
         })
         .await
@@ -49,6 +39,8 @@ async fn main() -> Result<()> {
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
     log::info!("Initialized signature_provider");
+    let message_generator = MessageGenerator::new(Box::new(signature_provider));
+    log::info!("Initialized message_generator");
     // TODO: Replace with a broadcaster that reports the results to our server
     let message_broadcaster = LogMessageBroadcaster {};
     log::info!("Initialized message_broadcaster");
@@ -58,7 +50,7 @@ async fn main() -> Result<()> {
 
     run_oracle_node(
         price_provider,
-        signature_provider,
+        message_generator,
         message_broadcaster,
         slot_provider,
     )
