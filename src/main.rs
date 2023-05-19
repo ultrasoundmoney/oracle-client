@@ -18,13 +18,13 @@ async fn run_oracle_node(
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
-        .run_for_every_slot(move |_slot| -> Result<()> {
+        .run_for_every_slot(move |slot| -> Result<()> {
             let price = price_provider.get_price().wrap_err("Failed to get price data")?;
             log::info!("Sucessfully obtained current Eth Price: {:?}", price.value as f64 / PRECISION_FACTOR as f64);
-            let signed_price_message = message_generator.generate_signed_price_message(price).wrap_err("Failed to generated signed price message")?;
+            let oracle_message = message_generator.generate_oracle_message(price, slot).wrap_err("Failed to generated signed price message")?;
             log::info!("Sucessfully generated signed price message");
-            log::debug!("signed_price_message: {:?}", signed_price_message);
-            message_broadcaster.broadcast(signed_price_message).wrap_err("Failed to broadcast message")?;
+            log::debug!("signed_price_message: {:?}", oracle_message);
+            message_broadcaster.broadcast(oracle_message).wrap_err("Failed to broadcast message")?;
             Ok(())
         })
         .await

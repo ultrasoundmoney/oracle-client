@@ -8,7 +8,7 @@ pub mod gofer;
 pub const PRECISION_DECIMALS: u32 = 6;
 pub const PRECISION_FACTOR: u64 = 10u64.pow(PRECISION_DECIMALS);
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct Price {
     pub value: u64, // TODO: Check if we need to add further info here such as timestamp
 }
