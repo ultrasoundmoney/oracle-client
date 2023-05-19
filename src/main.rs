@@ -1,7 +1,7 @@
 use eyre::{WrapErr, Result};
 
 mod message_broadcaster;
-use message_broadcaster::{log::LogMessageBroadcaster, MessageBroadcaster};
+use message_broadcaster::{json::JsonFileMessageBroadcaster, MessageBroadcaster};
 mod message_generator;
 use message_generator::MessageGenerator;
 mod price_provider;
@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
     // TODO: Replace with a broadcaster that reports the results to our server
-    let message_broadcaster = LogMessageBroadcaster {};
+    let message_broadcaster = JsonFileMessageBroadcaster::new()?;
     log::info!("Initialized message_broadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
     let slot_provider = MinedBlocksSlotProvider::new().await?;

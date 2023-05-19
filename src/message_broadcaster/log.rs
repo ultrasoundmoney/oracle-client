@@ -6,7 +6,7 @@ pub struct LogMessageBroadcaster {}
 
 impl MessageBroadcaster for LogMessageBroadcaster {
     fn broadcast(&self, msg: OracleMessage) -> Result<()> {
-        // log::debug!("Broadcasting message: {:?}", msg);
+        log::debug!("Broadcasting message: {:?}", msg);
         Ok(())
     }
 }
