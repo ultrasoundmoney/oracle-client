@@ -29,3 +29,19 @@ impl PriceProvider for GoferPriceProvider {
         Ok(Price { value })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    // Basic integration tests mocking out gofer with a static file
+    async fn parses_price_correctly() {
+        env_logger::init();
+
+        let price_provider = GoferPriceProvider::new("cat ./test_data/input.json");
+
+        let price = price_provider.get_price().unwrap();
+        assert_eq!(price.value, 1811093163);
+    }
+}
