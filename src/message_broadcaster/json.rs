@@ -9,12 +9,14 @@ pub struct JsonFileMessageBroadcaster {
 }
 
 impl JsonFileMessageBroadcaster {
-    pub fn new() -> Result<JsonFileMessageBroadcaster> {
+    pub fn new(directory_path: Option<String>) -> Result<JsonFileMessageBroadcaster> {
         // Create directory if it doesn't exist yet
-        std::fs::create_dir_all(DIRECTORY_PATH)?;
-        Ok(JsonFileMessageBroadcaster {
-            directory_path: String::from(DIRECTORY_PATH),
-        })
+        let directory_path = match directory_path {
+            Some(path) => path,
+            None => String::from(DIRECTORY_PATH),
+        };
+        std::fs::create_dir_all(&directory_path)?;
+        Ok(JsonFileMessageBroadcaster { directory_path })
     }
 }
 

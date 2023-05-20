@@ -2,7 +2,7 @@ use eyre::Result;
 use sha3::{Digest, Sha3_256};
 
 use crate::signature_provider::SignatureProvider;
-use bls::{AggregateSignature, AggregatePublicKey, Hash256, PublicKey, SecretKey, Signature};
+use bls::{AggregateSignature, Hash256, PublicKey, SecretKey, Signature};
 
 pub struct PrivateKeySignatureProvider {
     private_key: SecretKey,
@@ -64,7 +64,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         let msg_hash = signature_providers[0].get_message_digest(msg);
-        
+
         let signatures = signature_providers
             .iter()
             .map(|signature_provider| signature_provider.sign(msg).unwrap())
@@ -77,7 +77,6 @@ mod tests {
 
         let pub_keys_refs = pub_keys.iter().collect::<Vec<_>>();
 
-
         let mut aggregate_signature = AggregateSignature::infinity();
         signatures.iter().for_each(|signature| {
             aggregate_signature.add_assign(&signature);
@@ -86,4 +85,3 @@ mod tests {
         assert!(aggregate_signature.fast_aggregate_verify(msg_hash, &pub_keys_refs));
     }
 }
-

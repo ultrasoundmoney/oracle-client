@@ -132,7 +132,9 @@ mod tests {
     async fn generates_correct_price_value_messsage() {
         let signature_provider = PrivateKeySignatureProvider::random();
         let message_generator = MessageGenerator::new(Box::new(signature_provider.clone()));
-        let price = Price { value: 1000 * PRECISION_FACTOR };
+        let price = Price {
+            value: 1000 * PRECISION_FACTOR,
+        };
         let slot = Slot { number: 1 };
 
         let oracle_message = message_generator
@@ -146,50 +148,75 @@ mod tests {
             .value
             .eq(&price.value));
 
-        assert!(oracle_message.value_message.message.slot_number.eq(&slot.number));
         assert!(oracle_message
             .value_message
-            .signature.verify(
-                &oracle_message.validator_public_key,
-                signature_provider.get_message_digest(&oracle_message.value_message.message.as_ssz_bytes())
-            )
-            );
-        assert!(oracle_message.validator_public_key.to_string().eq(&signature_provider.get_public_key().unwrap().to_string()));
+            .message
+            .slot_number
+            .eq(&slot.number));
+        assert!(oracle_message.value_message.signature.verify(
+            &oracle_message.validator_public_key,
+            signature_provider
+                .get_message_digest(&oracle_message.value_message.message.as_ssz_bytes())
+        ));
+        assert!(oracle_message
+            .validator_public_key
+            .to_string()
+            .eq(&signature_provider.get_public_key().unwrap().to_string()));
     }
 
     #[tokio::test]
     async fn generates_correct_inclusion_messages() {
         let signature_provider = PrivateKeySignatureProvider::random();
         let message_generator = MessageGenerator::new(Box::new(signature_provider.clone()));
-        let price = Price { value: 1000 * PRECISION_FACTOR };
+        let price = Price {
+            value: 1000 * PRECISION_FACTOR,
+        };
         let slot = Slot { number: 1 };
 
         let oracle_message = message_generator
             .generate_oracle_message(price.clone(), slot.clone())
             .unwrap();
 
-        assert_eq!(oracle_message.interval_inclusion_messages.len(), 400); 
+        assert_eq!(oracle_message.interval_inclusion_messages.len(), 400);
 
-        assert_eq!(oracle_message.interval_inclusion_messages[0].message.value, 998 * INTERVAL_PRECISION_FACTOR);
-        assert_eq!(oracle_message.interval_inclusion_messages.last().unwrap().message.value, 1002  * INTERVAL_PRECISION_FACTOR - 1);
+        assert_eq!(
+            oracle_message.interval_inclusion_messages[0].message.value,
+            998 * INTERVAL_PRECISION_FACTOR
+        );
+        assert_eq!(
+            oracle_message
+                .interval_inclusion_messages
+                .last()
+                .unwrap()
+                .message
+                .value,
+            1002 * INTERVAL_PRECISION_FACTOR - 1
+        );
 
-        for (i, interval_inclusion_message) in oracle_message.interval_inclusion_messages.iter().enumerate() {
-            assert!(interval_inclusion_message
-                .signature
-                .verify(
-                    &oracle_message.validator_public_key,
-                    signature_provider.get_message_digest(&interval_inclusion_message.message.as_ssz_bytes())
-                )
-                );
+        for (i, interval_inclusion_message) in oracle_message
+            .interval_inclusion_messages
+            .iter()
+            .enumerate()
+        {
+            assert!(interval_inclusion_message.signature.verify(
+                &oracle_message.validator_public_key,
+                signature_provider
+                    .get_message_digest(&interval_inclusion_message.message.as_ssz_bytes())
+            ));
             assert_eq!(interval_inclusion_message.message.slot_number, slot.number);
-            assert_eq!(interval_inclusion_message.message.interval_size, INTERVAL_SIZE_BASIS_POINTS);
+            assert_eq!(
+                interval_inclusion_message.message.interval_size,
+                INTERVAL_SIZE_BASIS_POINTS
+            );
             if i > 0 {
-                assert_eq!(interval_inclusion_message.message.value, oracle_message.interval_inclusion_messages[i - 1].message.value + 1);
+                assert_eq!(
+                    interval_inclusion_message.message.value,
+                    oracle_message.interval_inclusion_messages[i - 1]
+                        .message
+                        .value
+                        + 1
+                );
             }
         }
     }
-
-
 }
-
-

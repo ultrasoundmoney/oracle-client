@@ -9,24 +9,19 @@ pub struct GoferPriceProvider {
 }
 
 impl GoferPriceProvider {
-    pub fn new(gofer_cmd: Option<&str>) -> Result<GoferPriceProvider> {
-        match gofer_cmd {
-            Some(cmd) => Ok(GoferPriceProvider {
-                gofer_cmd: cmd.to_string(),
-            }),
-            None => Ok(GoferPriceProvider {
-                gofer_cmd: std::env::var("GOFER_CMD")?,
-            }),
+    pub fn new(gofer_cmd: &str) -> GoferPriceProvider {
+        GoferPriceProvider {
+            gofer_cmd: gofer_cmd.to_string(),
         }
     }
 }
 
 impl PriceProvider for GoferPriceProvider {
     fn get_price(&self) -> Result<Price> {
-        let output = Command::new(&self.gofer_cmd)
-            .arg("prices")
-            .arg("--norpc")
-            .arg("ETH/USD")
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&self.gofer_cmd)
+            // .arg("ETH/USD")
             .output()?;
         let string_output = String::from_utf8(output.stdout)?;
         let data: types::Root = serde_json::from_str(&string_output)?;
