@@ -1,5 +1,4 @@
 use eyre::{Result, WrapErr};
-use std::fs;
 
 mod message_broadcaster;
 use message_broadcaster::{json::JsonFileMessageBroadcaster, MessageBroadcaster};
@@ -8,7 +7,7 @@ use message_generator::MessageGenerator;
 mod price_provider;
 use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR};
 mod signature_provider;
-use signature_provider::{private_key::PrivateKeySignatureProvider, SignatureProvider};
+use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
 use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
 
@@ -77,6 +76,8 @@ async fn main() -> Result<()> {
 mod tests {
     use super::*;
     use crate::message_broadcaster::OracleMessage;
+    use signature_provider::SignatureProvider;
+    use std::fs;
 
     fn get_output_files() -> Vec<String> {
         let mut output_files = Vec::new();

@@ -2,7 +2,7 @@ use eyre::Result;
 use sha3::{Digest, Sha3_256};
 
 use crate::signature_provider::SignatureProvider;
-use bls::{AggregateSignature, Hash256, PublicKey, SecretKey, Signature};
+use bls::{Hash256, PublicKey, SecretKey, Signature};
 
 pub struct PrivateKeySignatureProvider {
     private_key: SecretKey,
@@ -44,6 +44,7 @@ impl SignatureProvider for PrivateKeySignatureProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bls::AggregateSignature;
 
     #[tokio::test]
     async fn can_verify_signed_message() {
