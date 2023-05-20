@@ -1,2 +1,5 @@
 /target
 .env
+test_messages
+test_data/*
+!test_data/input.json

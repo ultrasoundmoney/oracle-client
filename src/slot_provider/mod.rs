@@ -3,7 +3,7 @@ use futures::Future;
 
 pub mod mined_blocks;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Slot {
     pub number: u64,
 }
