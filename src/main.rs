@@ -100,7 +100,11 @@ mod tests {
     // Basic integration tests mocking out gofer with a static file
     async fn generates_oracle_message() {
         env_logger::init();
-        let price_provider = GoferPriceProvider::new("cat /Users/christian/PersonalProjects/ultrasoundmoney/oracle-client/test_data/input.json");
+
+        // Create output directory if it doesn't exist
+        fs::create_dir_all("./test_data/output").unwrap();
+
+        let price_provider = GoferPriceProvider::new("cat ./test_data/input.json");
 
         let signature_provider = PrivateKeySignatureProvider::random();
         let public_key = signature_provider.get_public_key().unwrap();
