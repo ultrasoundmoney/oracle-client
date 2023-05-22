@@ -1,7 +1,7 @@
 use eyre::{Result, WrapErr};
 
 mod message_broadcaster;
-use message_broadcaster::{json::JsonFileMessageBroadcaster, MessageBroadcaster};
+use message_broadcaster::{http::HttpMessageBroadcaster, MessageBroadcaster};
 mod message_generator;
 use message_generator::MessageGenerator;
 mod price_provider;
@@ -30,8 +30,7 @@ async fn run_oracle_node(
                 .generate_oracle_message(price, slot)
                 .wrap_err("Failed to generated signed price message")?;
             log::info!("Sucessfully generated signed price message");
-            message_broadcaster
-                .broadcast(oracle_message)
+                message_broadcaster.broadcast(oracle_message.clone())
                 .wrap_err("Failed to broadcast message")?;
             Ok(())
         })
@@ -54,9 +53,8 @@ async fn main() -> Result<()> {
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    // TODO: Replace with a broadcaster that reports the results to our server
-    let message_broadcaster = JsonFileMessageBroadcaster::new(None)?;
-    log::info!("Initialized message_broadcaster");
+    let http_broadcaster = HttpMessageBroadcaster::new(None)?;
+    log::info!("Initialized message_roadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
     let slot_provider = MinedBlocksSlotProvider::new(None).await?;
     log::info!("Initialized slot_provider");
@@ -64,7 +62,7 @@ async fn main() -> Result<()> {
     run_oracle_node(
         price_provider,
         message_generator,
-        message_broadcaster,
+        http_broadcaster,
         slot_provider,
     )
     .await?;
@@ -75,7 +73,7 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message_broadcaster::OracleMessage;
+    use crate::message_broadcaster::{json::JsonFileMessageBroadcaster, OracleMessage};
     use signature_provider::SignatureProvider;
     use std::fs;
 
