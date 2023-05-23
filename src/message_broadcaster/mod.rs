@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -41,9 +42,7 @@ pub struct SignedIntervalInclusionMessage {
     pub signature: Signature,
 }
 
+#[async_trait]
 pub trait MessageBroadcaster {
-    fn broadcast(
-        &self,
-        msg: OracleMessage,
-    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_>;
+    async fn broadcast(&self, msg: OracleMessage) -> Result<()>;
 }

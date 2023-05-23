@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
@@ -32,12 +33,10 @@ impl JsonFileMessageBroadcaster {
     }
 }
 
+#[async_trait]
 impl MessageBroadcaster for JsonFileMessageBroadcaster {
-    fn broadcast(
-        &self,
-        msg: OracleMessage,
-    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
-        Box::new(futures::future::ready(self.write_file(msg)))
+    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+        self.write_file(msg)
     }
 }
 

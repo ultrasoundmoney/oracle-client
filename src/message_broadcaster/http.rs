@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
@@ -39,12 +40,11 @@ impl HttpMessageBroadcaster {
     }
 }
 
+#[async_trait]
 impl MessageBroadcaster for HttpMessageBroadcaster {
-    fn broadcast(
-        &self,
-        msg: OracleMessage,
-    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_> {
-        Box::new(Box::pin(self.send_request(msg)))
+    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+        self.send_request(msg).await?;
+        Ok(())
     }
 }
 

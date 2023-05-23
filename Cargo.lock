@@ -2279,6 +2279,7 @@ dependencies = [
 name = "oracle-client"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bls",
  "env_logger",
  "eth2_ssz_derive",

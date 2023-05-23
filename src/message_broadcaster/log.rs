@@ -1,16 +1,15 @@
+use async_trait::async_trait;
 use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
 
 pub struct LogMessageBroadcaster {}
 
+#[async_trait]
 impl MessageBroadcaster for LogMessageBroadcaster {
-    fn broadcast(
-        &self,
-        msg: OracleMessage,
-    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_> {
+    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
         log::debug!("Broadcasting message: {:?}", msg);
-        Box::new(futures::future::ready(Ok(())))
+        Ok(())
     }
 }
 
