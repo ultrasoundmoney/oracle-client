@@ -9,6 +9,7 @@ pub struct JsonFileMessageBroadcaster {
 }
 
 impl JsonFileMessageBroadcaster {
+    #[allow(dead_code)]
     pub fn new(directory_path: Option<String>) -> Result<JsonFileMessageBroadcaster> {
         // Create directory if it doesn't exist yet
         let directory_path = match directory_path {
@@ -32,7 +33,10 @@ impl JsonFileMessageBroadcaster {
 }
 
 impl MessageBroadcaster for JsonFileMessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+    fn broadcast(
+        &self,
+        msg: OracleMessage,
+    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
         Box::new(futures::future::ready(self.write_file(msg)))
     }
 }

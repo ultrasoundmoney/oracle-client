@@ -18,31 +18,33 @@ async fn run_oracle_node(
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
-        .run_for_every_slot(move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin>{
-            
-            let message_broadcaster = message_broadcaster.clone();
-            let message_generator = message_generator.clone();
-            let price_provider = price_provider.clone();
+        .run_for_every_slot(
+            move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+                let message_broadcaster = message_broadcaster.clone();
+                let message_generator = message_generator.clone();
+                let price_provider = price_provider.clone();
 
-            Box::new(Box::pin(async move {
-                log::info!("Running for slot: {}", slot.number);
-            let price = price_provider
-                .get_price()
-                .wrap_err("Failed to get price data")?;
-            log::info!(
-                "Sucessfully obtained current Eth Price: {:?}",
-                price.value as f64 / PRECISION_FACTOR as f64
-            );
-            let oracle_message = &message_generator
-                .generate_oracle_message(price.clone(), slot)
-                .wrap_err("Failed to generated signed price message")?;
-            log::info!("Sucessfully generated signed price message");
-            message_broadcaster.broadcast(oracle_message.clone())
-            .await
-            .wrap_err("Failed to broadcast message")?;
-            Ok(())
-            }))
-        })
+                Box::new(Box::pin(async move {
+                    log::info!("Running for slot: {}", slot.number);
+                    let price = price_provider
+                        .get_price()
+                        .wrap_err("Failed to get price data")?;
+                    log::info!(
+                        "Sucessfully obtained current Eth Price: {:?}",
+                        price.value as f64 / PRECISION_FACTOR as f64
+                    );
+                    let oracle_message = &message_generator
+                        .generate_oracle_message(price.clone(), slot)
+                        .wrap_err("Failed to generated signed price message")?;
+                    log::info!("Sucessfully generated signed price message");
+                    message_broadcaster
+                        .broadcast(oracle_message.clone())
+                        .await
+                        .wrap_err("Failed to broadcast message")?;
+                    Ok(())
+                }))
+            },
+        )
         .await
 }
 

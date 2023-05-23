@@ -5,9 +5,9 @@ use ssz_derive::{Decode, Encode};
 use crate::price_provider::Price;
 use bls::{PublicKey, Signature};
 
+pub mod http;
 pub mod json;
 pub mod log;
-pub mod http;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OracleMessage {
@@ -42,5 +42,8 @@ pub struct SignedIntervalInclusionMessage {
 }
 
 pub trait MessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_>;
+    fn broadcast(
+        &self,
+        msg: OracleMessage,
+    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_>;
 }

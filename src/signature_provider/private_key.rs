@@ -21,7 +21,6 @@ impl PrivateKeySignatureProvider {
     pub fn get_message_digest(&self, msg: &[u8]) -> Hash256 {
         Hash256::from_slice(&Sha3_256::digest(msg))
     }
-
 }
 
 impl SignatureProvider for PrivateKeySignatureProvider {

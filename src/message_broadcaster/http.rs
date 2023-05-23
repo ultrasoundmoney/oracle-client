@@ -28,16 +28,22 @@ impl HttpMessageBroadcaster {
             .await
             .map_err(|e| eyre::eyre!("Error sending message: {}", e))?;
         log::debug!("Response: {:?}", response);
-        if response.status().is_success()  {
+        if response.status().is_success() {
             Ok(())
         } else {
-            Err(eyre::eyre!("Non-Success response when submitting oracle message: {:?}", response))
+            Err(eyre::eyre!(
+                "Non-Success response when submitting oracle message: {:?}",
+                response
+            ))
         }
     }
 }
 
 impl MessageBroadcaster for HttpMessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_> {
+    fn broadcast(
+        &self,
+        msg: OracleMessage,
+    ) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_> {
         Box::new(Box::pin(self.send_request(msg)))
     }
 }
