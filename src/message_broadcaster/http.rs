@@ -3,7 +3,6 @@ use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
 
-pub const SERVER_URL: &str = "http://localhost:3000/post_oracle_message";
 
 pub struct HttpMessageBroadcaster {
     server_url: String,
@@ -12,9 +11,10 @@ pub struct HttpMessageBroadcaster {
 impl HttpMessageBroadcaster {
     pub fn new(server_url: Option<String>) -> Result<HttpMessageBroadcaster> {
         // Create directory if it doesn't exist yet
+
         let server_url = match server_url {
             Some(path) => path,
-            None => String::from(SERVER_URL),
+            None =>  {  std::env::var("SERVER_URL")? },
         };
         Ok(HttpMessageBroadcaster { server_url })
     }
