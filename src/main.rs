@@ -12,13 +12,20 @@ mod slot_provider;
 use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
 
 async fn run_oracle_node(
-    price_provider: impl PriceProvider + 'static,
+    price_provider: impl PriceProvider + Clone + 'static,
     message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster + 'static,
+    message_broadcaster: impl MessageBroadcaster + Clone + 'static,
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
-        .run_for_every_slot(move |slot| -> Result<()> {
+        .run_for_every_slot(move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin>{
+            
+            let message_broadcaster = message_broadcaster.clone();
+            let message_generator = message_generator.clone();
+            let price_provider = price_provider.clone();
+
+            Box::new(Box::pin(async move {
+                log::info!("Running for slot: {}", slot.number);
             let price = price_provider
                 .get_price()
                 .wrap_err("Failed to get price data")?;
@@ -26,13 +33,15 @@ async fn run_oracle_node(
                 "Sucessfully obtained current Eth Price: {:?}",
                 price.value as f64 / PRECISION_FACTOR as f64
             );
-            let oracle_message = message_generator
-                .generate_oracle_message(price, slot)
+            let oracle_message = &message_generator
+                .generate_oracle_message(price.clone(), slot)
                 .wrap_err("Failed to generated signed price message")?;
             log::info!("Sucessfully generated signed price message");
-                message_broadcaster.broadcast(oracle_message.clone())
-                .wrap_err("Failed to broadcast message")?;
+            message_broadcaster.broadcast(oracle_message.clone())
+            .await
+            .wrap_err("Failed to broadcast message")?;
             Ok(())
+            }))
         })
         .await
 }
@@ -109,7 +118,7 @@ mod tests {
         let message_generator = MessageGenerator::new(Box::new(signature_provider));
         let output_files_before = get_output_files();
         let message_broadcaster =
-            JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
+            HttpMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
         let slot_provider = MinedBlocksSlotProvider::new(Some(1)).await.unwrap();
 

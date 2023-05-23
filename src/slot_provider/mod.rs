@@ -9,7 +9,7 @@ pub struct Slot {
 }
 
 pub trait SlotProvider {
-    fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
+    fn run_for_every_slot<'a, F>(&'a self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Result<()> + 'static;
+        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin> + 'a;
 }

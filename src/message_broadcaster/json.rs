@@ -18,10 +18,8 @@ impl JsonFileMessageBroadcaster {
         std::fs::create_dir_all(&directory_path)?;
         Ok(JsonFileMessageBroadcaster { directory_path })
     }
-}
 
-impl MessageBroadcaster for JsonFileMessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+    fn write_file(&self, msg: OracleMessage) -> Result<()> {
         let file_name = format!(
             "{}/{}.json",
             self.directory_path, msg.value_message.message.slot_number
@@ -30,5 +28,19 @@ impl MessageBroadcaster for JsonFileMessageBroadcaster {
         let file = std::fs::File::create(file_name)?;
         serde_json::to_writer_pretty(file, &msg)?;
         Ok(())
+    }
+}
+
+impl MessageBroadcaster for JsonFileMessageBroadcaster {
+    fn broadcast(&self, msg: OracleMessage) -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+        Box::new(futures::future::ready(self.write_file(msg)))
+    }
+}
+
+impl Clone for JsonFileMessageBroadcaster {
+    fn clone(&self) -> Self {
+        JsonFileMessageBroadcaster {
+            directory_path: self.directory_path.clone(),
+        }
     }
 }

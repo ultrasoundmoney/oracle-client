@@ -42,5 +42,5 @@ pub struct SignedIntervalInclusionMessage {
 }
 
 pub trait MessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Result<()>;
+    fn broadcast(&self, msg: OracleMessage) -> Box<dyn futures::Future<Output = Result<()>> + Unpin + '_>;
 }
