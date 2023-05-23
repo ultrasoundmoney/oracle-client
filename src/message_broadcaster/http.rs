@@ -3,7 +3,6 @@ use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
 
-
 pub struct HttpMessageBroadcaster {
     server_url: String,
 }
@@ -14,7 +13,7 @@ impl HttpMessageBroadcaster {
 
         let server_url = match server_url {
             Some(path) => path,
-            None =>  {  std::env::var("SERVER_URL")? },
+            None => std::env::var("SERVER_URL")?,
         };
         Ok(HttpMessageBroadcaster { server_url })
     }
