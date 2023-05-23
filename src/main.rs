@@ -118,7 +118,7 @@ mod tests {
         let message_generator = MessageGenerator::new(Box::new(signature_provider));
         let output_files_before = get_output_files();
         let message_broadcaster =
-            HttpMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
+            JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
         let slot_provider = MinedBlocksSlotProvider::new(Some(1)).await.unwrap();
 
