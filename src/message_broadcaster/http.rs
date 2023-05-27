@@ -18,7 +18,7 @@ impl HttpMessageBroadcaster {
         Ok(HttpMessageBroadcaster { server_url })
     }
 
-    async fn send_request(&self, msg: OracleMessage) -> Result<()> {
+    async fn send_request(&self, msg: &OracleMessage) -> Result<()> {
         let client = reqwest::Client::new();
         log::debug!("Sending message to server at: {:}", self.server_url);
         let response = client
@@ -41,7 +41,7 @@ impl HttpMessageBroadcaster {
 
 #[async_trait]
 impl MessageBroadcaster for HttpMessageBroadcaster {
-    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+    async fn broadcast(&self, msg: &OracleMessage) -> Result<()> {
         self.send_request(msg).await?;
         Ok(())
     }

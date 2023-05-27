@@ -21,7 +21,7 @@ impl JsonFileMessageBroadcaster {
         Ok(JsonFileMessageBroadcaster { directory_path })
     }
 
-    fn write_file(&self, msg: OracleMessage) -> Result<()> {
+    fn write_file(&self, msg: &OracleMessage) -> Result<()> {
         let file_name = format!(
             "{}/{}.json",
             self.directory_path, msg.value_message.message.slot_number
@@ -35,7 +35,7 @@ impl JsonFileMessageBroadcaster {
 
 #[async_trait]
 impl MessageBroadcaster for JsonFileMessageBroadcaster {
-    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+    async fn broadcast(&self, msg: &OracleMessage) -> Result<()> {
         self.write_file(msg)
     }
 }

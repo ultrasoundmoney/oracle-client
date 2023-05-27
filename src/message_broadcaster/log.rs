@@ -7,7 +7,7 @@ pub struct LogMessageBroadcaster {}
 
 #[async_trait]
 impl MessageBroadcaster for LogMessageBroadcaster {
-    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+    async fn broadcast(&self, msg: &OracleMessage) -> Result<()> {
         log::debug!("Broadcasting message: {:?}", msg);
         Ok(())
     }

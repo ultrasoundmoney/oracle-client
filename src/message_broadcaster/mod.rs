@@ -44,5 +44,5 @@ pub struct SignedIntervalInclusionMessage {
 
 #[async_trait]
 pub trait MessageBroadcaster {
-    async fn broadcast(&self, msg: OracleMessage) -> Result<()>;
+    async fn broadcast(&self, msg: &OracleMessage) -> Result<()>;
 }

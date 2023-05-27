@@ -9,17 +9,17 @@ use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR}
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
-use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
+use slot_provider::{clock::SystemClockSlotProvider, SlotProvider};
 
 async fn run_oracle_node(
-    price_provider: impl PriceProvider + Clone + 'static,
+    price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
     message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster + Clone + 'static,
+    message_broadcaster: impl MessageBroadcaster + std::marker::Send + std::marker::Sync + Clone + 'static,
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
         .run_for_every_slot(
-            move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+            move |slot: slot_provider::Slot| -> Box<dyn futures::Future<Output = Result<()>> + std::marker::Send + Unpin> {
                 let message_broadcaster = message_broadcaster.clone();
                 let message_generator = message_generator.clone();
                 let price_provider = price_provider.clone();
@@ -38,7 +38,7 @@ async fn run_oracle_node(
                         .wrap_err("Failed to generated signed price message")?;
                     log::info!("Sucessfully generated signed price message");
                     message_broadcaster
-                        .broadcast(oracle_message.clone())
+                        .broadcast(oracle_message)
                         .await
                         .wrap_err("Failed to broadcast message")?;
                     Ok(())
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     let http_broadcaster = HttpMessageBroadcaster::new(None)?;
     log::info!("Initialized message_roadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
-    let slot_provider = MinedBlocksSlotProvider::new(None).await?;
+    let slot_provider = SystemClockSlotProvider::new();
     log::info!("Initialized slot_provider");
 
     run_oracle_node(
