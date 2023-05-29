@@ -4,7 +4,6 @@ use futures::Future;
 use tokio::time::Duration;
 
 pub mod clock;
-pub mod mined_blocks;
 
 // Dec-01-2020 12:00:23 UTC
 pub const GENESIS_SLOT_TIME: u64 = 1606824023;
