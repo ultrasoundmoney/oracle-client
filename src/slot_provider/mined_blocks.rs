@@ -29,7 +29,7 @@ impl MinedBlocksSlotProvider {
 impl SlotProvider for MinedBlocksSlotProvider {
     fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send>
+        F: Fn(Slot) -> Box<dyn Future<Output = ()> + Unpin + std::marker::Send>
             + std::marker::Send
             + std::marker::Sync
             + 'static,
@@ -57,13 +57,7 @@ impl SlotProvider for MinedBlocksSlotProvider {
                     }
                 };
                 let slot_number = slot.number;
-                match f(slot)
-                    .await
-                    .wrap_err(format!("Failed to run for slot: {}", slot_number))
-                {
-                    Ok(_) => log::info!("Ran succesfully for slot {}", slot_number),
-                    Err(e) => log::error!("{:?}", e),
-                };
+                f(slot).await;
             }
             Ok(())
         }))

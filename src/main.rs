@@ -23,7 +23,7 @@ async fn run_oracle_node(
 ) -> Result<()> {
     slot_provider
         .run_for_every_slot(
-            move |slot: slot_provider::Slot| -> Box<dyn futures::Future<Output = Result<()>> + std::marker::Send + Unpin> {
+            move |slot: slot_provider::Slot| -> Box<dyn futures::Future<Output = ()> + std::marker::Send + Unpin> {
                 let message_broadcaster = message_broadcaster.clone();
                 let message_generator = message_generator.clone();
                 let price_provider = price_provider.clone();
@@ -34,10 +34,9 @@ async fn run_oracle_node(
                         message_generator,
                         message_broadcaster,
                         slot.clone()
-                    ).await.or_else(|e| {
+                    ).await.unwrap_or_else(|e| {
                         log::error!("Error when running for slot: {} - {:?}", slot.number, e);
-                        Ok(())
-                    })
+                    });
                 }))
             },
         )
@@ -112,6 +111,7 @@ mod tests {
     use super::*;
     use crate::message_broadcaster::{json::JsonFileMessageBroadcaster, OracleMessage};
     use signature_provider::SignatureProvider;
+    use crate::slot_provider::mined_blocks::MinedBlocksSlotProvider;
     use std::fs;
 
     fn get_output_files() -> Vec<String> {

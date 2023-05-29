@@ -21,7 +21,7 @@ const SLOT_PERIOD_SECONDS: u64 = 12;
 impl SlotProvider for SystemClockSlotProvider {
     fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send>
+        F: Fn(Slot) -> Box<dyn Future<Output = ()> + Unpin + std::marker::Send>
             + std::marker::Send
             + std::marker::Sync
             + 'static,
