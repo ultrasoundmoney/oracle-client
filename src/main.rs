@@ -9,7 +9,7 @@ use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR}
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
-use slot_provider::{clock::SystemClockSlotProvider, Slot, SlotProvider};
+use slot_provider::{clock::{GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS, SystemClockSlotProvider}, Slot, SlotProvider};
 
 async fn run_oracle_node(
     price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
@@ -54,6 +54,12 @@ async fn run_single_slot(
     slot: Slot,
 ) -> Result<()> {
     log::info!("Running for slot: {}", slot.number);
+    let slot_number = slot.number;
+    let slot_start_time = GENESIS_SLOT_TIME + SLOT_PERIOD_SECONDS * slot_number;
+    let start_time = chrono::Utc::now().timestamp();
+    let lag = start_time - slot_start_time as i64;
+    log::info!("Lagging {} seconds behind slot start for slot {}", lag, slot_number);
+
     let price = price_provider
         .get_price()
         .wrap_err("Failed to get price data")?;
@@ -62,14 +68,18 @@ async fn run_single_slot(
         price.value as f64 / PRECISION_FACTOR as f64
     );
     let oracle_message = &message_generator
-        .generate_oracle_message(price.clone(), slot.clone())
+        .generate_oracle_message(price.clone(), slot)
         .wrap_err("Failed to generated signed price message")?;
     log::info!("Sucessfully generated signed price message");
     message_broadcaster
         .broadcast(oracle_message)
         .await
         .wrap_err("Failed to broadcast message")?;
-    log::info!("Sucessfully ran for slot: {}", slot.number);
+    log::info!("Sucessfully ran for slot: {}", slot_number);
+
+    let end_time = chrono::Utc::now().timestamp();
+    let time_elapsed = end_time - start_time;
+    log::info!("Time elapsed for slot {} : {} seconds", slot_number, time_elapsed);
     Ok(())
 }
 
