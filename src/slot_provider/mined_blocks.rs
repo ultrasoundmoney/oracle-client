@@ -27,12 +27,12 @@ impl MinedBlocksSlotProvider {
 }
 
 impl SlotProvider for MinedBlocksSlotProvider {
-    fn run_for_every_slot<F>(
-        &self,
-        f: F,
-    ) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
+    fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send> + std::marker::Send + std::marker::Sync + 'static,
+        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send>
+            + std::marker::Send
+            + std::marker::Sync
+            + 'static,
     {
         Box::new(Box::pin(async move {
             let block_stream = self.provider.subscribe_blocks().await?;

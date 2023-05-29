@@ -16,15 +16,15 @@ impl SystemClockSlotProvider {
 
 // Dec-01-2020 12:00:23 UTC
 const GENESIS_SLOT_TIME: u64 = 1606824023;
-const SLOT_PERIOD_SECONDS: u64 = 1;
+const SLOT_PERIOD_SECONDS: u64 = 12;
 
 impl SlotProvider for SystemClockSlotProvider {
-    fn run_for_every_slot<F>(
-        &self,
-        f: F,
-    ) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
+    fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send> + std::marker::Send + std::marker::Sync + 'static,
+        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin + std::marker::Send>
+            + std::marker::Send
+            + std::marker::Sync
+            + 'static,
     {
         Box::new(Box::pin(async move {
             let mut slot_stream =
@@ -50,8 +50,7 @@ impl SlotProvider for SystemClockSlotProvider {
 
             slot_stream
                 .for_each_concurrent(4, |slot| async {
-                    tokio::spawn(f(slot))
-                    .await;
+                    tokio::spawn(f(slot)).await;
                 })
                 .await;
             Ok(())

@@ -19,8 +19,12 @@ pub struct MessageGenerator {
 }
 
 impl MessageGenerator {
-    pub fn new(signature_provider: Box<dyn SignatureProvider + std::marker::Send + std::marker::Sync>) -> MessageGenerator {
-        MessageGenerator { signature_provider: signature_provider.clone() }
+    pub fn new(
+        signature_provider: Box<dyn SignatureProvider + std::marker::Send + std::marker::Sync>,
+    ) -> MessageGenerator {
+        MessageGenerator {
+            signature_provider: signature_provider.clone(),
+        }
     }
 
     pub fn generate_oracle_message(&self, price: Price, slot: Slot) -> Result<OracleMessage> {
