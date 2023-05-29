@@ -6,11 +6,19 @@ use tokio::time::{interval, Duration};
 use crate::slot_provider::{Slot, SlotProvider};
 use tokio_stream::wrappers::IntervalStream;
 
-pub struct SystemClockSlotProvider {}
+pub struct SystemClockSlotProvider {
+    num_slots: Option<usize>,
+}
 
 impl SystemClockSlotProvider {
     pub fn new() -> Self {
-        Self {}
+        Self { num_slots: None }
+    }
+
+    pub fn stop_after_num_slots(num_slots: usize) -> Self {
+        Self {
+            num_slots: Some(num_slots),
+        }
     }
 }
 
@@ -48,11 +56,21 @@ impl SlotProvider for SystemClockSlotProvider {
             );
             tokio::time::sleep(Duration::from_secs(wait_time)).await;
 
-            slot_stream
-                .for_each_concurrent(4, |slot| async {
-                    tokio::spawn(f(slot)).await;
-                })
-                .await;
+            if let Some(num_slots) = self.num_slots {
+                log::info!("Stopping after {} slots", num_slots);
+                slot_stream
+                    .take(num_slots)
+                    .for_each_concurrent(4, |slot| async {
+                        tokio::spawn(f(slot)).await;
+                    })
+                    .await;
+            } else {
+                slot_stream
+                    .for_each_concurrent(4, |slot| async {
+                        tokio::spawn(f(slot)).await;
+                    })
+                    .await;
+            }
             Ok(())
         }))
     }

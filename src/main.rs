@@ -111,7 +111,6 @@ mod tests {
     use super::*;
     use crate::message_broadcaster::{json::JsonFileMessageBroadcaster, OracleMessage};
     use signature_provider::SignatureProvider;
-    use crate::slot_provider::mined_blocks::MinedBlocksSlotProvider;
     use std::fs;
 
     fn get_output_files() -> Vec<String> {
@@ -148,7 +147,7 @@ mod tests {
         let message_broadcaster =
             JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
-        let slot_provider = MinedBlocksSlotProvider::new(Some(1)).await.unwrap();
+        let slot_provider = SystemClockSlotProvider::stop_after_num_slots(1);
 
         run_oracle_node(
             price_provider,
