@@ -36,7 +36,7 @@ impl SlotProvider for SystemClockSlotProvider {
         Box::new(Box::pin(async move {
             let slot_stream =
                 IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS))).map(|_| {
-                    let now = chrono::Utc::now().timestamp_millis();
+                    let now = chrono::Utc::now().timestamp();
                     let slot_number =
                         (now - GENESIS_SLOT_TIME as i64) / SLOT_PERIOD_SECONDS as i64 + 1;
                     Slot {
