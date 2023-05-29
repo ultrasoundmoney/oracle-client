@@ -9,7 +9,7 @@ use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR}
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
-use slot_provider::{clock::{GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS, SystemClockSlotProvider}, Slot, SlotProvider};
+use slot_provider::{clock::SystemClockSlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS,  Slot, SlotProvider, wait_until_slot_start};
 
 async fn run_oracle_node(
     price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
@@ -55,11 +55,8 @@ async fn run_single_slot(
 ) -> Result<()> {
     log::info!("Running for slot: {}", slot.number);
     let slot_number = slot.number;
-    let slot_start_time = GENESIS_SLOT_TIME + SLOT_PERIOD_SECONDS * slot_number;
     let start_time = chrono::Utc::now().timestamp();
-    let lag = start_time - slot_start_time as i64;
-    log::info!("Lagging {} seconds behind slot start for slot {}", lag, slot_number);
-
+    wait_until_slot_start(slot_number).await?;
     let price = price_provider
         .get_price()
         .wrap_err("Failed to get price data")?;
