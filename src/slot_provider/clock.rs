@@ -1,9 +1,9 @@
-use ethers::providers::{Middleware, Provider, StreamExt, Ws};
-use eyre::{Result, WrapErr};
+use ethers::providers::StreamExt;
+use eyre::Result;
 use futures::Future;
 use tokio::time::{interval, Duration};
 
-use crate::slot_provider::{GENESIS_SLOT_TIME, Slot, SlotProvider, SLOT_PERIOD_SECONDS};
+use crate::slot_provider::{Slot, SlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS};
 use tokio_stream::wrappers::IntervalStream;
 
 pub struct SystemClockSlotProvider {
@@ -15,12 +15,12 @@ impl SystemClockSlotProvider {
         Self { num_slots: None }
     }
 
+    #[allow(dead_code)]
     pub fn stop_after_num_slots(num_slots: usize) -> Self {
         Self {
             num_slots: Some(num_slots),
         }
     }
-
 }
 
 const MAX_CONCURRENT_SLOTS: usize = 8;
@@ -36,13 +36,13 @@ impl SlotProvider for SystemClockSlotProvider {
         Box::new(Box::pin(async move {
             let slot_stream =
                 IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS))).map(|_| {
-                    let now = chrono::Utc::now().timestamp();
-                    let slot_number = (now - GENESIS_SLOT_TIME as i64) / SLOT_PERIOD_SECONDS as i64 + 1;
+                    let now = chrono::Utc::now().timestamp_millis();
+                    let slot_number =
+                        (now - GENESIS_SLOT_TIME as i64) / SLOT_PERIOD_SECONDS as i64 + 1;
                     Slot {
                         number: slot_number as u64,
                     }
                 });
-
 
             if let Some(num_slots) = self.num_slots {
                 log::info!("Stopping after {} slots", num_slots);

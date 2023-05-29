@@ -1,5 +1,5 @@
 use ethers::providers::{Middleware, Provider, StreamExt, Ws};
-use eyre::{Error, Result, WrapErr};
+use eyre::{Error, Result};
 use futures::Future;
 
 use crate::slot_provider::{Slot, SlotProvider};
@@ -10,6 +10,7 @@ pub struct MinedBlocksSlotProvider {
 }
 
 impl MinedBlocksSlotProvider {
+    #[allow(dead_code)]
     pub async fn new(num_blocks: Option<usize>) -> Result<MinedBlocksSlotProvider> {
         let provider = Provider::<Ws>::connect(
             "wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27",
@@ -56,7 +57,6 @@ impl SlotProvider for MinedBlocksSlotProvider {
                         continue;
                     }
                 };
-                let slot_number = slot.number;
                 f(slot).await;
             }
             Ok(())

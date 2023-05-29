@@ -1,7 +1,7 @@
-use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
+use chrono::{TimeZone, Utc};
 use eyre::Result;
 use futures::Future;
-use tokio::time::{Duration};
+use tokio::time::Duration;
 
 pub mod clock;
 pub mod mined_blocks;
@@ -24,25 +24,30 @@ pub trait SlotProvider {
             + 'static;
 }
 
-    pub async fn wait_until_slot_start(slot_number: u64) -> Result<()> {
-        let slot_start_offset = GENESIS_SLOT_TIME + SLOT_PERIOD_SECONDS * slot_number;
-        let slot_start = Utc.timestamp_opt(slot_start_offset as i64, 0).unwrap();
-        let current_time = chrono::Utc::now();
+pub async fn wait_until_slot_start(slot_number: u64) -> Result<()> {
+    let slot_start_offset = GENESIS_SLOT_TIME + SLOT_PERIOD_SECONDS * slot_number;
+    let slot_start = Utc.timestamp_opt(slot_start_offset as i64, 0).unwrap();
+    let current_time = chrono::Utc::now();
+    log::info!(
+        "Current time: {}, slot {} starts: {}",
+        current_time,
+        slot_number,
+        slot_start
+    );
+    if current_time < slot_start {
+        let wait_time = slot_start.timestamp() - current_time.timestamp();
         log::info!(
-            "Current time: {}, slot {} starts: {}",
-            current_time, slot_number, slot_start
+            "Waiting for {} seconds until slot {} starts",
+            wait_time,
+            slot_number
         );
-        if current_time < slot_start {
-            let wait_time = slot_start.timestamp() - current_time.timestamp();
-            log::info!(
-                "Waiting for {} seconds until slot {} starts",
-                wait_time,
-                slot_number
-            );
-            tokio::time::sleep(Duration::from_secs(wait_time as u64)).await;
-            Ok(())
-        } else {
-            log::info!("Current time is after slot start");
-            Err(eyre::Error::msg(format!("Current time {} is after slot start {} for slot {}", current_time, slot_start, slot_number)))
-        }
+        tokio::time::sleep(Duration::from_secs(wait_time as u64)).await;
+        Ok(())
+    } else {
+        log::info!("Current time is after slot start");
+        Err(eyre::Error::msg(format!(
+            "Current time {} is after slot start {} for slot {}",
+            current_time, slot_start, slot_number
+        )))
     }
+}
