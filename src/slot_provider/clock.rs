@@ -3,7 +3,9 @@ use eyre::Result;
 use futures::Future;
 use tokio::time::{interval, Duration};
 
-use crate::slot_provider::{Slot, SlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS};
+use crate::slot_provider::{
+    wait_until_slot_start, Slot, SlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS,
+};
 use tokio_stream::wrappers::IntervalStream;
 
 pub struct SystemClockSlotProvider {
@@ -50,6 +52,13 @@ impl SlotProvider for SystemClockSlotProvider {
                     .take(num_slots)
                     .for_each_concurrent(MAX_CONCURRENT_SLOTS, |slot| async {
                         let slot_number = slot.number;
+                        // NOTE: I previously had moved this waiting into the handler function f
+                        // which resulted in the interval stream not triggering correctly anymore
+                        wait_until_slot_start(slot_number)
+                            .await
+                            .unwrap_or_else(|e| {
+                                log::error!("Error waiting for slot {}: {:?}", slot_number, e);
+                            });
                         tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
                             log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
                         })
@@ -59,6 +68,11 @@ impl SlotProvider for SystemClockSlotProvider {
                 slot_stream
                     .for_each_concurrent(MAX_CONCURRENT_SLOTS, |slot| async {
                         let slot_number = slot.number;
+                        wait_until_slot_start(slot_number)
+                            .await
+                            .unwrap_or_else(|e| {
+                                log::error!("Error waiting for slot {}: {:?}", slot_number, e);
+                            });
                         tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
                             log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
                         })
