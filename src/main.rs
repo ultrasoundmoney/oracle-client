@@ -9,43 +9,80 @@ use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR}
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
-use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
+use slot_provider::{clock::SystemClockSlotProvider, Slot, SlotProvider};
 
 async fn run_oracle_node(
-    price_provider: impl PriceProvider + Clone + 'static,
+    price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
     message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster + Clone + 'static,
+    message_broadcaster: impl MessageBroadcaster
+        + std::marker::Send
+        + std::marker::Sync
+        + Clone
+        + 'static,
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
         .run_for_every_slot(
-            move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+            move |slot: slot_provider::Slot| -> Box<dyn futures::Future<Output = ()> + std::marker::Send + Unpin> {
                 let message_broadcaster = message_broadcaster.clone();
                 let message_generator = message_generator.clone();
                 let price_provider = price_provider.clone();
 
                 Box::new(Box::pin(async move {
-                    log::info!("Running for slot: {}", slot.number);
-                    let price = price_provider
-                        .get_price()
-                        .wrap_err("Failed to get price data")?;
-                    log::info!(
-                        "Sucessfully obtained current Eth Price: {:?}",
-                        price.value as f64 / PRECISION_FACTOR as f64
-                    );
-                    let oracle_message = &message_generator
-                        .generate_oracle_message(price.clone(), slot)
-                        .wrap_err("Failed to generated signed price message")?;
-                    log::info!("Sucessfully generated signed price message");
-                    message_broadcaster
-                        .broadcast(oracle_message.clone())
-                        .await
-                        .wrap_err("Failed to broadcast message")?;
-                    Ok(())
+                    run_single_slot(
+                        price_provider,
+                        message_generator,
+                        message_broadcaster,
+                        slot.clone()
+                    ).await.unwrap_or_else(|e| {
+                        log::error!("Error when running for slot: {} - {:?}", slot.number, e);
+                    });
                 }))
             },
         )
         .await
+}
+
+async fn run_single_slot(
+    price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
+    message_generator: MessageGenerator,
+    message_broadcaster: impl MessageBroadcaster
+        + std::marker::Send
+        + std::marker::Sync
+        + Clone
+        + 'static,
+    slot: Slot,
+) -> Result<()> {
+    log::info!("Running for slot: {}", slot.number);
+    let slot_number = slot.number;
+    let start_time = chrono::Utc::now().timestamp();
+    let price = price_provider
+        .get_price()
+        .wrap_err("Failed to get price data")?;
+    log::info!(
+        "Sucessfully obtained current Eth Price: {:?} for slot {} after {} seconds",
+        price.value as f64 / PRECISION_FACTOR as f64,
+        slot_number,
+        chrono::Utc::now().timestamp() - start_time,
+    );
+    let oracle_message = &message_generator
+        .generate_oracle_message(price.clone(), slot)
+        .wrap_err("Failed to generated signed price message")?;
+    log::info!(
+        "Sucessfully generated signed price message for slot {} after {} seconds",
+        slot_number,
+        chrono::Utc::now().timestamp() - start_time
+    );
+    message_broadcaster
+        .broadcast(oracle_message)
+        .await
+        .wrap_err("Failed to broadcast message")?;
+    log::info!(
+        "Sucessfully finished for slot {} after {} seconds",
+        slot_number,
+        chrono::Utc::now().timestamp() - start_time
+    );
+    Ok(())
 }
 
 #[tokio::main]
@@ -67,7 +104,7 @@ async fn main() -> Result<()> {
     let http_broadcaster = HttpMessageBroadcaster::new(None)?;
     log::info!("Initialized message_roadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
-    let slot_provider = MinedBlocksSlotProvider::new(None).await?;
+    let slot_provider = SystemClockSlotProvider::new();
     log::info!("Initialized slot_provider");
 
     run_oracle_node(
@@ -122,7 +159,7 @@ mod tests {
         let message_broadcaster =
             JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
-        let slot_provider = MinedBlocksSlotProvider::new(Some(1)).await.unwrap();
+        let slot_provider = SystemClockSlotProvider::stop_after_num_slots(1);
 
         run_oracle_node(
             price_provider,

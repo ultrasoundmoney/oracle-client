@@ -15,12 +15,16 @@ pub const INTERVAL_SIZE_BASIS_POINTS: u64 = 20;
 pub const ONE_IN_BASIS_POINTS: u64 = 10000;
 
 pub struct MessageGenerator {
-    signature_provider: Box<dyn SignatureProvider>,
+    signature_provider: Box<dyn SignatureProvider + std::marker::Send + std::marker::Sync>,
 }
 
 impl MessageGenerator {
-    pub fn new(signature_provider: Box<dyn SignatureProvider>) -> MessageGenerator {
-        MessageGenerator { signature_provider }
+    pub fn new(
+        signature_provider: Box<dyn SignatureProvider + std::marker::Send + std::marker::Sync>,
+    ) -> MessageGenerator {
+        MessageGenerator {
+            signature_provider: signature_provider.clone(),
+        }
     }
 
     pub fn generate_oracle_message(&self, price: Price, slot: Slot) -> Result<OracleMessage> {

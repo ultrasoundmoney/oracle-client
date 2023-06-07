@@ -24,7 +24,9 @@ impl PrivateKeySignatureProvider {
 }
 
 impl SignatureProvider for PrivateKeySignatureProvider {
-    fn clone(&self) -> Box<dyn SignatureProvider + 'static> {
+    fn clone(
+        &self,
+    ) -> Box<dyn SignatureProvider + std::marker::Send + std::marker::Sync + 'static> {
         Box::new(PrivateKeySignatureProvider {
             private_key: self.private_key.clone(),
         })
