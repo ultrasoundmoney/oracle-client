@@ -60,25 +60,27 @@ async fn run_single_slot(
         .get_price()
         .wrap_err("Failed to get price data")?;
     log::info!(
-        "Sucessfully obtained current Eth Price: {:?}",
-        price.value as f64 / PRECISION_FACTOR as f64
+        "Sucessfully obtained current Eth Price: {:?} for slot {} after {} seconds",
+        price.value as f64 / PRECISION_FACTOR as f64,
+        slot_number,
+        chrono::Utc::now().timestamp() - start_time,
     );
     let oracle_message = &message_generator
         .generate_oracle_message(price.clone(), slot)
         .wrap_err("Failed to generated signed price message")?;
-    log::info!("Sucessfully generated signed price message");
+    log::info!(
+        "Sucessfully generated signed price message for slot {} after {} seconds",
+        slot_number,
+        chrono::Utc::now().timestamp() - start_time
+    );
     message_broadcaster
         .broadcast(oracle_message)
         .await
         .wrap_err("Failed to broadcast message")?;
-    log::info!("Sucessfully ran for slot: {}", slot_number);
-
-    let end_time = chrono::Utc::now().timestamp();
-    let time_elapsed = end_time - start_time;
     log::info!(
-        "Time elapsed for slot {} : {} seconds",
+        "Sucessfully finished for slot {} after {} seconds",
         slot_number,
-        time_elapsed
+        chrono::Utc::now().timestamp() - start_time
     );
     Ok(())
 }
