@@ -27,9 +27,12 @@ impl MinedBlocksSlotProvider {
 }
 
 impl SlotProvider for MinedBlocksSlotProvider {
-    fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
+    fn run_for_every_slot<'a, F>(
+        &'a self,
+        f: F,
+    ) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
     where
-        F: Fn(Slot) -> Result<()> + 'static,
+        F: Fn(Slot) -> Box<dyn Future<Output = Result<()>> + Unpin> + 'a,
     {
         Box::new(Box::pin(async move {
             let block_stream = self.provider.subscribe_blocks().await?;
@@ -54,7 +57,10 @@ impl SlotProvider for MinedBlocksSlotProvider {
                     }
                 };
                 let slot_number = slot.number;
-                match f(slot).wrap_err(format!("Failed to run for slot: {}", slot_number)) {
+                match f(slot)
+                    .await
+                    .wrap_err(format!("Failed to run for slot: {}", slot_number))
+                {
                     Ok(_) => log::info!("Ran succesfully for slot {}", slot_number),
                     Err(e) => log::error!("{:?}", e),
                 };

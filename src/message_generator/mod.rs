@@ -123,6 +123,14 @@ impl MessageGenerator {
     }
 }
 
+impl Clone for MessageGenerator {
+    fn clone(&self) -> Self {
+        MessageGenerator {
+            signature_provider: self.signature_provider.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,7 +139,7 @@ mod tests {
     #[tokio::test]
     async fn generates_correct_price_value_messsage() {
         let signature_provider = PrivateKeySignatureProvider::random();
-        let message_generator = MessageGenerator::new(Box::new(signature_provider.clone()));
+        let message_generator = MessageGenerator::new(signature_provider.clone());
         let price = Price {
             value: 1000 * PRECISION_FACTOR,
         };
@@ -167,7 +175,7 @@ mod tests {
     #[tokio::test]
     async fn generates_correct_inclusion_messages() {
         let signature_provider = PrivateKeySignatureProvider::random();
-        let message_generator = MessageGenerator::new(Box::new(signature_provider.clone()));
+        let message_generator = MessageGenerator::new(signature_provider.clone());
         let price = Price {
             value: 1000 * PRECISION_FACTOR,
         };

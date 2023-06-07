@@ -30,6 +30,14 @@ impl PriceProvider for GoferPriceProvider {
     }
 }
 
+impl Clone for GoferPriceProvider {
+    fn clone(&self) -> Self {
+        GoferPriceProvider {
+            gofer_cmd: self.gofer_cmd.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

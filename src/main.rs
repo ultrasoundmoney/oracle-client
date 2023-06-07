@@ -1,7 +1,7 @@
 use eyre::{Result, WrapErr};
 
 mod message_broadcaster;
-use message_broadcaster::{json::JsonFileMessageBroadcaster, MessageBroadcaster};
+use message_broadcaster::{http::HttpMessageBroadcaster, MessageBroadcaster};
 mod message_generator;
 use message_generator::MessageGenerator;
 mod price_provider;
@@ -12,29 +12,39 @@ mod slot_provider;
 use slot_provider::{mined_blocks::MinedBlocksSlotProvider, SlotProvider};
 
 async fn run_oracle_node(
-    price_provider: impl PriceProvider + 'static,
+    price_provider: impl PriceProvider + Clone + 'static,
     message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster + 'static,
+    message_broadcaster: impl MessageBroadcaster + Clone + 'static,
     slot_provider: impl SlotProvider,
 ) -> Result<()> {
     slot_provider
-        .run_for_every_slot(move |slot| -> Result<()> {
-            let price = price_provider
-                .get_price()
-                .wrap_err("Failed to get price data")?;
-            log::info!(
-                "Sucessfully obtained current Eth Price: {:?}",
-                price.value as f64 / PRECISION_FACTOR as f64
-            );
-            let oracle_message = message_generator
-                .generate_oracle_message(price, slot)
-                .wrap_err("Failed to generated signed price message")?;
-            log::info!("Sucessfully generated signed price message");
-            message_broadcaster
-                .broadcast(oracle_message)
-                .wrap_err("Failed to broadcast message")?;
-            Ok(())
-        })
+        .run_for_every_slot(
+            move |slot| -> Box<dyn futures::Future<Output = Result<()>> + Unpin> {
+                let message_broadcaster = message_broadcaster.clone();
+                let message_generator = message_generator.clone();
+                let price_provider = price_provider.clone();
+
+                Box::new(Box::pin(async move {
+                    log::info!("Running for slot: {}", slot.number);
+                    let price = price_provider
+                        .get_price()
+                        .wrap_err("Failed to get price data")?;
+                    log::info!(
+                        "Sucessfully obtained current Eth Price: {:?}",
+                        price.value as f64 / PRECISION_FACTOR as f64
+                    );
+                    let oracle_message = &message_generator
+                        .generate_oracle_message(price.clone(), slot)
+                        .wrap_err("Failed to generated signed price message")?;
+                    log::info!("Sucessfully generated signed price message");
+                    message_broadcaster
+                        .broadcast(oracle_message.clone())
+                        .await
+                        .wrap_err("Failed to broadcast message")?;
+                    Ok(())
+                }))
+            },
+        )
         .await
 }
 
@@ -54,9 +64,8 @@ async fn main() -> Result<()> {
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    // TODO: Replace with a broadcaster that reports the results to our server
-    let message_broadcaster = JsonFileMessageBroadcaster::new(None)?;
-    log::info!("Initialized message_broadcaster");
+    let http_broadcaster = HttpMessageBroadcaster::new(None)?;
+    log::info!("Initialized message_roadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
     let slot_provider = MinedBlocksSlotProvider::new(None).await?;
     log::info!("Initialized slot_provider");
@@ -64,7 +73,7 @@ async fn main() -> Result<()> {
     run_oracle_node(
         price_provider,
         message_generator,
-        message_broadcaster,
+        http_broadcaster,
         slot_provider,
     )
     .await?;
@@ -75,7 +84,7 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message_broadcaster::OracleMessage;
+    use crate::message_broadcaster::{json::JsonFileMessageBroadcaster, OracleMessage};
     use signature_provider::SignatureProvider;
     use std::fs;
 

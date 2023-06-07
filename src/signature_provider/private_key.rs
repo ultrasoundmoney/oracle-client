@@ -23,15 +23,13 @@ impl PrivateKeySignatureProvider {
     }
 }
 
-impl Clone for PrivateKeySignatureProvider {
-    fn clone(&self) -> Self {
-        PrivateKeySignatureProvider {
-            private_key: self.private_key.clone(),
-        }
-    }
-}
-
 impl SignatureProvider for PrivateKeySignatureProvider {
+    fn clone(&self) -> Box<dyn SignatureProvider + 'static> {
+        Box::new(PrivateKeySignatureProvider {
+            private_key: self.private_key.clone(),
+        })
+    }
+
     fn sign(&self, msg: &[u8]) -> Result<Signature> {
         Ok(self.private_key.sign(self.get_message_digest(msg)))
     }

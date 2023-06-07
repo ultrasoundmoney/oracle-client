@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use eyre::Result;
 
 use crate::message_broadcaster::{MessageBroadcaster, OracleMessage};
@@ -9,6 +10,7 @@ pub struct JsonFileMessageBroadcaster {
 }
 
 impl JsonFileMessageBroadcaster {
+    #[allow(dead_code)]
     pub fn new(directory_path: Option<String>) -> Result<JsonFileMessageBroadcaster> {
         // Create directory if it doesn't exist yet
         let directory_path = match directory_path {
@@ -18,10 +20,8 @@ impl JsonFileMessageBroadcaster {
         std::fs::create_dir_all(&directory_path)?;
         Ok(JsonFileMessageBroadcaster { directory_path })
     }
-}
 
-impl MessageBroadcaster for JsonFileMessageBroadcaster {
-    fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+    fn write_file(&self, msg: OracleMessage) -> Result<()> {
         let file_name = format!(
             "{}/{}.json",
             self.directory_path, msg.value_message.message.slot_number
@@ -30,5 +30,20 @@ impl MessageBroadcaster for JsonFileMessageBroadcaster {
         let file = std::fs::File::create(file_name)?;
         serde_json::to_writer_pretty(file, &msg)?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl MessageBroadcaster for JsonFileMessageBroadcaster {
+    async fn broadcast(&self, msg: OracleMessage) -> Result<()> {
+        self.write_file(msg)
+    }
+}
+
+impl Clone for JsonFileMessageBroadcaster {
+    fn clone(&self) -> Self {
+        JsonFileMessageBroadcaster {
+            directory_path: self.directory_path.clone(),
+        }
     }
 }
