@@ -1,3 +1,5 @@
+//! Clock based SlotProvider
+//! When a fn does not finish within a slot (12 seconds), the next call is made concurrently, up to a buffer limit. When the buffer limit is reached, the passed fn will not be called for a new slot, but wait in a FIFO queue until a previous slot has finished.
 use ethers::providers::StreamExt;
 use eyre::Result;
 use futures::Future;
@@ -54,28 +56,44 @@ impl SlotProvider for SystemClockSlotProvider {
                         let slot_number = slot.number;
                         // NOTE: I previously had moved this waiting into the handler function f
                         // which resulted in the interval stream not triggering correctly anymore
-                        wait_until_slot_start(slot_number)
-                            .await
-                            .unwrap_or_else(|e| {
-                                log::error!("Error waiting for slot {}: {:?}", slot_number, e);
-                            });
-                        tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
-                            log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
-                        })
+                        let wait_result = wait_until_slot_start(slot_number).await;
+                        if wait_result.is_ok() {
+                            tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
+                                log::error!(
+                                    "Error spawning task for slot {}: {:?}",
+                                    slot_number,
+                                    e
+                                );
+                            })
+                        } else {
+                            log::error!(
+                                "Error waiting for slot {}: {:?}",
+                                slot_number,
+                                wait_result
+                            );
+                        }
                     })
                     .await;
             } else {
                 slot_stream
                     .for_each_concurrent(MAX_CONCURRENT_SLOTS, |slot| async {
                         let slot_number = slot.number;
-                        wait_until_slot_start(slot_number)
-                            .await
-                            .unwrap_or_else(|e| {
-                                log::error!("Error waiting for slot {}: {:?}", slot_number, e);
-                            });
-                        tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
-                            log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
-                        })
+                        let wait_result = wait_until_slot_start(slot_number).await;
+                        if wait_result.is_ok() {
+                            tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
+                                log::error!(
+                                    "Error spawning task for slot {}: {:?}",
+                                    slot_number,
+                                    e
+                                );
+                            })
+                        } else {
+                            log::error!(
+                                "Error waiting for slot {}: {:?}",
+                                slot_number,
+                                wait_result
+                            );
+                        }
                     })
                     .await;
             }

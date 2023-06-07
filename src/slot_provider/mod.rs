@@ -1,3 +1,4 @@
+//! Slot providers provide a context which takes a fn, which is then called once for every slot.
 use chrono::{TimeZone, Utc};
 use eyre::Result;
 use futures::Future;
