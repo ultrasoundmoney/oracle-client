@@ -48,53 +48,28 @@ impl SlotProvider for SystemClockSlotProvider {
                     }
                 });
 
+            let slot_closure = |slot: Slot| async {
+                let slot_number = slot.number;
+                // NOTE: I previously had moved this waiting into the handler function f
+                // which resulted in the interval stream not triggering correctly anymore
+                let wait_result = wait_until_slot_start(slot_number).await;
+                if wait_result.is_ok() {
+                    tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
+                        log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
+                    })
+                } else {
+                    log::error!("Error waiting for slot {}: {:?}", slot_number, wait_result);
+                }
+            };
             if let Some(num_slots) = self.num_slots {
                 log::info!("Stopping after {} slots", num_slots);
                 slot_stream
                     .take(num_slots)
-                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, |slot| async {
-                        let slot_number = slot.number;
-                        // NOTE: I previously had moved this waiting into the handler function f
-                        // which resulted in the interval stream not triggering correctly anymore
-                        let wait_result = wait_until_slot_start(slot_number).await;
-                        if wait_result.is_ok() {
-                            tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
-                                log::error!(
-                                    "Error spawning task for slot {}: {:?}",
-                                    slot_number,
-                                    e
-                                );
-                            })
-                        } else {
-                            log::error!(
-                                "Error waiting for slot {}: {:?}",
-                                slot_number,
-                                wait_result
-                            );
-                        }
-                    })
+                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, slot_closure)
                     .await;
             } else {
                 slot_stream
-                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, |slot| async {
-                        let slot_number = slot.number;
-                        let wait_result = wait_until_slot_start(slot_number).await;
-                        if wait_result.is_ok() {
-                            tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
-                                log::error!(
-                                    "Error spawning task for slot {}: {:?}",
-                                    slot_number,
-                                    e
-                                );
-                            })
-                        } else {
-                            log::error!(
-                                "Error waiting for slot {}: {:?}",
-                                slot_number,
-                                wait_result
-                            );
-                        }
-                    })
+                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, slot_closure)
                     .await;
             }
             Ok(())
