@@ -3,7 +3,7 @@
 use ethers::providers::StreamExt;
 use eyre::Result;
 use futures::Future;
-use tokio::time::{interval, Duration};
+use tokio::time::{interval, timeout, Duration};
 
 use crate::slot_provider::{
     wait_until_slot_start, Slot, SlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS,
@@ -28,6 +28,7 @@ impl SystemClockSlotProvider {
 }
 
 const MAX_CONCURRENT_SLOTS: usize = 8;
+const SLOT_HANDLER_TIMEOUT_SECONDS: u64 = 36;
 
 impl SlotProvider for SystemClockSlotProvider {
     fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
@@ -54,9 +55,18 @@ impl SlotProvider for SystemClockSlotProvider {
                 // which resulted in the interval stream not triggering correctly anymore
                 let wait_result = wait_until_slot_start(slot_number).await;
                 if wait_result.is_ok() {
-                    tokio::spawn(f(slot)).await.unwrap_or_else(|e| {
-                        log::error!("Error spawning task for slot {}: {:?}", slot_number, e);
+                    tokio::spawn(timeout(
+                        Duration::from_secs(SLOT_HANDLER_TIMEOUT_SECONDS),
+                        f(slot),
+                    ))
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::error!("Failed to spawn handler for slot {}: {:?}", slot_number, e);
+                        Ok(())
                     })
+                    .unwrap_or_else(|_| {
+                        log::error!("Slot handler timed out for slot {}", slot_number);
+                    });
                 } else {
                     log::error!("Error waiting for slot {}: {:?}", slot_number, wait_result);
                 }
