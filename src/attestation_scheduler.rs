@@ -79,6 +79,7 @@ impl SystemClockAttestationScheduler {
         let price = self
             .price_provider
             .get_price()
+            .await
             .wrap_err("Failed to get price data")?;
         log::info!(
             "Sucessfully obtained current Eth Price: {:?} for slot {} after {} seconds",
@@ -212,8 +213,31 @@ mod tests {
 
         // Create output directory if it doesn't exist
         fs::create_dir_all("./test_data/output").unwrap();
+        
+        let mut server = mockito::Server::new();
 
-        let price_provider = GoferPriceProvider::new("cat ./test_data/input.json");
+        let response_json = r#"{
+                    "type":"aggregator",
+                    "base":"ETH",
+                    "quote":"USD",
+                    "price":1953,
+                    "bid":1953,
+                    "ask":1952,
+                    "vol24h":0,
+                    "ts":"2023-07-04T15:55:48Z",
+                    "prices":[]
+                }"#;
+
+        // Create a mock
+        let mock = server
+            .mock("POST", "/price")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(response_json)
+            .create();
+
+        let url = format!("{}{}", server.url().as_str(), "/price");
+        let price_provider = GoferPriceProvider::new(url.as_str());
 
         let signature_provider = PrivateKeySignatureProvider::random();
         let public_key = signature_provider.get_public_key().unwrap();
@@ -240,5 +264,7 @@ mod tests {
 
         assert_eq!(oracle_message.validator_public_key, public_key);
         assert!(oracle_message.interval_inclusion_messages.len() > 100);
+
+        mock.assert();
     }
 }

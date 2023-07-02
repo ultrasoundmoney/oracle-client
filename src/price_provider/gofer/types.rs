@@ -55,7 +55,15 @@ pub struct Price2 {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 #[serde(rename_all = "camelCase")]
 pub struct Params2 {
-    pub origin: String,
+    pub origin: Option<String>,
+    pub method: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoferPriceRequest {
+    pub pair: String,
 }
