@@ -9,8 +9,6 @@ pub struct HttpMessageBroadcaster {
 
 impl HttpMessageBroadcaster {
     pub fn new(server_url: Option<String>) -> Result<HttpMessageBroadcaster> {
-        // Create directory if it doesn't exist yet
-
         let server_url = match server_url {
             Some(path) => path,
             None => std::env::var("SERVER_URL")?,
