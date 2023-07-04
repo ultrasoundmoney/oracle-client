@@ -81,6 +81,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -505,6 +515,17 @@ dependencies = [
  "sha2 0.10.6",
  "sha3",
  "thiserror",
+]
+
+[[package]]
+name = "colored"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17bfac9400fe632590700de801b5dfbdca8b6944073832d1284bdbeef7f00e45"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi",
 ]
 
 [[package]]
@@ -2152,6 +2173,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mockito"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09c762b6267c4593555bb38f1df19e9318985bc4de60b5e8462890856a9a5b4c"
+dependencies = [
+ "assert-json-diff",
+ "colored",
+ "futures",
+ "hyper",
+ "lazy_static",
+ "log",
+ "rand 0.8.5",
+ "regex",
+ "serde_json",
+ "serde_urlencoded",
+ "similar",
+ "tokio",
+]
+
+[[package]]
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2326,6 +2367,7 @@ dependencies = [
  "eyre",
  "futures",
  "log",
+ "mockito",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "reqwest",
@@ -3279,6 +3321,12 @@ dependencies = [
  "digest 0.10.6",
  "rand_core 0.6.4",
 ]
+
+[[package]]
+name = "similar"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "420acb44afdae038210c99e69aae24109f32f15500aa708e81d46c9f29d55fcf"
 
 [[package]]
 name = "siphasher"
