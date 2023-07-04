@@ -101,7 +101,7 @@ async fn main() -> Result<()> {
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    let http_broadcaster = HttpMessageBroadcaster::new(None)?;
+    let http_broadcaster = HttpMessageBroadcaster::new()?;
     log::info!("Initialized message_roadcaster");
     // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
     let slot_provider = SystemClockSlotProvider::new();

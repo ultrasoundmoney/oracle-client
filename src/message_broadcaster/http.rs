@@ -8,11 +8,10 @@ pub struct HttpMessageBroadcaster {
 }
 
 impl HttpMessageBroadcaster {
-    pub fn new(server_url: Option<String>) -> Result<HttpMessageBroadcaster> {
-        let server_url = match server_url {
-            Some(path) => path,
-            None => std::env::var("SERVER_URL")?,
-        };
+    pub fn new() -> Result<HttpMessageBroadcaster> {
+        let server_url = std::env::var("SERVER_URL").context(
+            "expect SERVER_URL in env when no server_url is given to HttpMessageBroadcaster",
+        )?;
         Ok(HttpMessageBroadcaster { server_url })
     }
 
