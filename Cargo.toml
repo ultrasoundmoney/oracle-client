@@ -9,7 +9,7 @@ edition = "2021"
 async-trait = "0.1.68"
 bls = { git = "https://github.com/ckoopmann/ethereum_bls" }
 chrono = "0.4.24"
-env_logger = "0.9.0"
+env_logger = "0.10"
 eth2_ssz_derive = "0.3.0"
 ethereum_ssz = "0.5.2"
 ethers = { version = "2.0.4", features = ["ws"] }
