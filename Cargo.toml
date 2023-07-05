@@ -6,8 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-env_logger = "0.9.0"
+async-trait = "0.1.68"
 bls = { git = "https://github.com/ckoopmann/ethereum_bls" }
+chrono = "0.4.24"
+env_logger = "0.9.0"
 eth2_ssz_derive = "0.3.0"
 ethereum_ssz = "0.5.2"
 ethers = { version = "2.0.4", features = ["ws"] }
@@ -17,14 +19,12 @@ lazy_static = "1.4.0"
 log = "0.4.0"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+reqwest = { version = "0.11.18", features = ["serde_json", "blocking"] }
 serde = { version = "1.0.163", features = ["derive"] }
 serde_json = "1.0.96"
-tokio = { version = "1.28.1", features = ["macros"] }
 sha3 = "0.10.8"
-reqwest = { version = "0.11.18", features = ["serde_json", "blocking"] }
-async-trait = "0.1.68"
+tokio = { version = "1.28.1", features = ["macros"] }
 tokio-stream = "0.1.14"
-chrono = "0.4.24"
 
 [dev-dependencies]
 mockito = "1.1.0"
