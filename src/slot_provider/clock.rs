@@ -1,5 +1,4 @@
 //! Clock based SlotProvider
-//! When a fn does not finish within a slot (12 seconds), the next call is made concurrently, up to a buffer limit. When the buffer limit is reached, the passed fn will not be called for a new slot, but wait in a FIFO queue until a previous slot has finished.
 use async_trait::async_trait;
 use chrono::Utc;
 use futures::stream::StreamExt;
