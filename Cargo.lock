@@ -2366,6 +2366,7 @@ dependencies = [
  "ethers",
  "eyre",
  "futures",
+ "lazy_static",
  "log",
  "mockito",
  "rand 0.8.5",

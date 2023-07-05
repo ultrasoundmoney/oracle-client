@@ -1,88 +1,185 @@
 //! Clock based SlotProvider
 //! When a fn does not finish within a slot (12 seconds), the next call is made concurrently, up to a buffer limit. When the buffer limit is reached, the passed fn will not be called for a new slot, but wait in a FIFO queue until a previous slot has finished.
-use ethers::providers::StreamExt;
-use eyre::Result;
-use futures::Future;
-use tokio::time::{interval, timeout, Duration};
-
-use crate::slot_provider::{
-    wait_until_slot_start, Slot, SlotProvider, GENESIS_SLOT_TIME, SLOT_PERIOD_SECONDS,
-};
+use async_trait::async_trait;
+use chrono::Utc;
+use futures::stream::StreamExt;
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
+use tokio::time::{interval, Duration};
 use tokio_stream::wrappers::IntervalStream;
 
+use super::{Slot, SlotProvider};
+
+const SLOT_PERIOD_SECONDS: u32 = 12;
+const MAX_SLOTS: usize = 32;
+
+/// Waits until the start of the next slot.
+/// Much of our code depends on what the current slot is, and wants to answer as fast as possible,
+/// therefore we sometimes want to align our code with the start of the slot.
+async fn wait_until_next_slot() {
+    let current_slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
+    let next_slot = Slot {
+        number: current_slot.number + 1,
+    };
+    let next_slot_start = next_slot.to_date_time();
+    // NOTE: doesn't account for leap seconds.
+    let seconds_until_next_slot = next_slot_start.timestamp() - Utc::now().timestamp();
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(
+        seconds_until_next_slot as u64,
+    ))
+    .await;
+}
+
 pub struct SystemClockSlotProvider {
-    num_slots: Option<usize>,
+    counter: AtomicUsize,
+    max_count: Option<usize>,
+    slots: Mutex<VecDeque<Slot>>,
 }
 
 impl SystemClockSlotProvider {
-    pub fn new() -> Self {
-        Self { num_slots: None }
+    fn internal_new(notify: mpsc::Sender<()>, max_count: Option<usize>) -> Arc<Self> {
+        let provider = Arc::new(Self {
+            counter: AtomicUsize::new(0),
+            max_count,
+            slots: Mutex::new(VecDeque::with_capacity(MAX_SLOTS)),
+        });
+
+        log::info!("Starting slot provider with max_count {:?}", max_count);
+
+        let provider_clone = provider.clone();
+        tokio::spawn(async move {
+            log::debug!("Waiting until next slot to start interval stream");
+            wait_until_next_slot().await;
+
+            // TODO: this is probably broken for leap seconds. A slot is sometimes 11s, sometimes
+            // 13s long. Assuming IntervalStream waits a number of real seconds, not unix timestamp
+            // seconds, we'd become misaligned.
+            let mut interval_stream =
+                IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS.into())));
+
+            while let Some(_) = interval_stream.next().await {
+                let slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
+
+                log::debug!(
+                    "Interval stream ticked, adding next slot to buffer {}",
+                    slot.number
+                );
+
+                let mut slots = provider_clone.slots.lock().await;
+                // When we have buffered MAX_SLOTS slots, we drop the oldest slot from the buffer.
+                // Slots are picked up LIFO, the oldest slot is unlikely to ever get processed.
+                // TODO: consider adding a lifetime to a slot instead and picking a buffer which
+                // can always accomodate SLOT_LIFETIME / SLOT_PERIOD_SECONDS slots.
+                if slots.len() == MAX_SLOTS {
+                    let oldest_slot = slots
+                        .pop_front()
+                        .expect("Queue to contain slots after checking length");
+                    log::info!(
+                        "Slots buffer full, dropping oldest slot {} from buffer",
+                        oldest_slot.number
+                    );
+                }
+                slots.push_back(slot);
+
+                // Count how many slots have passed.
+                provider_clone.counter.fetch_add(1, Ordering::Relaxed);
+
+                // Notify any listener about the new slot.
+                notify
+                    .try_send(())
+                    .unwrap_or_else(|_| println!("Error sending notification"));
+
+                // If we are working with a max count, check if we have reached it.
+                if let Some(max_count) = &provider_clone.max_count {
+                    let counter = provider_clone.counter.load(Ordering::Relaxed);
+                    if counter >= *max_count {
+                        log::info!("Reached max count of {} slots", max_count);
+                        // When we stop emitting new slots, we want to make sure any listener is notified by
+                        // dropping the Sender.
+                        drop(notify);
+                        break;
+                    }
+                }
+            }
+        });
+
+        provider
     }
 
-    #[allow(dead_code)]
-    pub fn stop_after_num_slots(num_slots: usize) -> Self {
-        Self {
-            num_slots: Some(num_slots),
-        }
+    pub fn new(notify: mpsc::Sender<()>) -> Arc<Self> {
+        Self::internal_new(notify, None)
+    }
+
+    #[cfg(test)]
+    pub fn new_with_max_count(notify: mpsc::Sender<()>, max_count: usize) -> Arc<Self> {
+        Self::internal_new(notify, Some(max_count))
     }
 }
 
-const MAX_CONCURRENT_SLOTS: usize = 8;
-const SLOT_HANDLER_TIMEOUT_SECONDS: u64 = 36;
-
+#[async_trait]
 impl SlotProvider for SystemClockSlotProvider {
-    fn run_for_every_slot<F>(&self, f: F) -> Box<dyn Future<Output = Result<()>> + Unpin + '_>
-    where
-        F: Fn(Slot) -> Box<dyn Future<Output = ()> + Unpin + std::marker::Send>
-            + std::marker::Send
-            + std::marker::Sync
-            + 'static,
-    {
-        Box::new(Box::pin(async move {
-            let slot_stream =
-                IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS))).map(|_| {
-                    let now = chrono::Utc::now().timestamp();
-                    let slot_number =
-                        (now - GENESIS_SLOT_TIME as i64) / SLOT_PERIOD_SECONDS as i64 + 1;
-                    Slot {
-                        number: slot_number as u64,
-                    }
-                });
+    async fn get_last_slot(&self) -> Option<Slot> {
+        let slots = self.slots.lock().await;
+        slots.back().cloned()
+    }
+}
 
-            let slot_closure = |slot: Slot| async {
-                let slot_number = slot.number;
-                // NOTE: I previously had moved this waiting into the handler function f
-                // which resulted in the interval stream not triggering correctly anymore
-                let wait_result = wait_until_slot_start(slot_number).await;
-                if wait_result.is_ok() {
-                    tokio::spawn(timeout(
-                        Duration::from_secs(SLOT_HANDLER_TIMEOUT_SECONDS),
-                        f(slot),
-                    ))
-                    .await
-                    .unwrap_or_else(|e| {
-                        log::error!("Failed to spawn handler for slot {}: {:?}", slot_number, e);
-                        Ok(())
-                    })
-                    .unwrap_or_else(|_| {
-                        log::error!("Slot handler timed out for slot {}", slot_number);
-                    });
-                } else {
-                    log::error!("Error waiting for slot {}: {:?}", slot_number, wait_result);
-                }
-            };
-            if let Some(num_slots) = self.num_slots {
-                log::info!("Stopping after {} slots", num_slots);
-                slot_stream
-                    .take(num_slots)
-                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, slot_closure)
-                    .await;
-            } else {
-                slot_stream
-                    .for_each_concurrent(MAX_CONCURRENT_SLOTS, slot_closure)
-                    .await;
+#[cfg(test)]
+mod tests {
+    use chrono::Duration;
+    use tokio::time::timeout;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_wait_until_next_slot() {
+        let current_slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
+        let next_slot = Slot {
+            number: current_slot.number + 1,
+        };
+        wait_until_next_slot().await; // Function to test
+        let now = Utc::now();
+
+        // Should be after, and within 1 second of the start of the next slot.
+        assert!(now > next_slot.to_date_time());
+        assert!(now - next_slot.to_date_time() < Duration::seconds(1));
+    }
+
+    #[tokio::test]
+    async fn test_max_count() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let _provider = SystemClockSlotProvider::new_with_max_count(tx, 1);
+
+        // Wait for slot to be generated. As we wait for the start of the slot before emitting the
+        // first, it takes between 0 - 12s to see the first slot appear.
+        timeout(
+            Duration::seconds(SLOT_PERIOD_SECONDS as i64)
+                .to_std()
+                .unwrap(),
+            rx.recv(),
+        )
+        .await
+        .unwrap()
+        .expect("Expected one value, but no values were receieved");
+
+        // After the last slot and notification are pushed, the provider should notice it has hit
+        // its max_count, and close the notifier. This should result in a final None on the
+        // notifier channel.
+        match timeout(
+            Duration::seconds(SLOT_PERIOD_SECONDS as i64 + 1)
+                .to_std()
+                .unwrap(),
+            rx.recv(),
+        )
+        .await
+        {
+            Ok(last) => {
+                assert!(last.is_none(), "Expected no more values to be sent")
             }
-            Ok(())
-        }))
+            Err(_) => panic!("Expect channel to be closed"), // Timeout was triggered as expected
+        }
     }
 }

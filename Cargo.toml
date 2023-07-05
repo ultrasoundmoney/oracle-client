@@ -13,6 +13,7 @@ ethereum_ssz = "0.5.2"
 ethers = { version = "2.0.4", features = ["ws"] }
 eyre = "0.6.8"
 futures = "0.3.28"
+lazy_static = "1.4.0"
 log = "0.4.0"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
