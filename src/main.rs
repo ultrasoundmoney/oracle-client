@@ -1,4 +1,10 @@
+use std::sync::Arc;
+
+use chrono::Utc;
 use eyre::{Result, WrapErr};
+use futures::StreamExt;
+use tokio::{sync::mpsc, time::timeout};
+use tokio_stream::wrappers::ReceiverStream;
 
 mod message_broadcaster;
 use message_broadcaster::{http::HttpMessageBroadcaster, MessageBroadcaster};
@@ -11,46 +17,13 @@ use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
 use slot_provider::{clock::SystemClockSlotProvider, Slot, SlotProvider};
 
-async fn run_oracle_node(
-    price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
-    message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster
-        + std::marker::Send
-        + std::marker::Sync
-        + Clone
-        + 'static,
-    slot_provider: impl SlotProvider,
-) -> Result<()> {
-    slot_provider
-        .run_for_every_slot(
-            move |slot: slot_provider::Slot| -> Box<dyn futures::Future<Output = ()> + std::marker::Send + Unpin> {
-                let message_broadcaster = message_broadcaster.clone();
-                let message_generator = message_generator.clone();
-                let price_provider = price_provider.clone();
-
-                Box::new(Box::pin(async move {
-                    run_single_slot(
-                        price_provider,
-                        message_generator,
-                        message_broadcaster,
-                        slot.clone()
-                    ).await.unwrap_or_else(|e| {
-                        log::error!("Error when running for slot: {} - {:?}", slot.number, e);
-                    });
-                }))
-            },
-        )
-        .await
-}
+const MAX_CONCURRENT_SLOTS: usize = 8;
+const RUN_SLOT_LIMIT_SECS: u64 = 24;
 
 async fn run_single_slot(
-    price_provider: impl PriceProvider + std::marker::Send + std::marker::Sync + Clone + 'static,
+    price_provider: Arc<impl PriceProvider>,
     message_generator: MessageGenerator,
-    message_broadcaster: impl MessageBroadcaster
-        + std::marker::Send
-        + std::marker::Sync
-        + Clone
-        + 'static,
+    message_broadcaster: Arc<impl MessageBroadcaster>,
     slot: Slot,
 ) -> Result<()> {
     log::info!("Running for slot: {}", slot.number);
@@ -85,33 +58,80 @@ async fn run_single_slot(
     Ok(())
 }
 
+async fn run_oracle_node(
+    price_provider: Arc<impl PriceProvider>,
+    message_generator: MessageGenerator,
+    message_broadcaster: Arc<impl MessageBroadcaster>,
+    slot_provider: Arc<SystemClockSlotProvider>,
+    rx: mpsc::Receiver<()>,
+) -> Result<()> {
+    ReceiverStream::new(rx)
+        .for_each_concurrent(MAX_CONCURRENT_SLOTS, |_| async {
+            if let Some(slot) = slot_provider.get_last_slot().await {
+                log::debug!(
+                    "processing slot with number: {}, slot start: {}, processing started at: {}",
+                    slot.number,
+                    slot.to_date_time(),
+                    Utc::now()
+                );
+                timeout(
+                    tokio::time::Duration::from_secs(RUN_SLOT_LIMIT_SECS),
+                    run_single_slot(
+                        price_provider.clone(),
+                        message_generator.clone(),
+                        message_broadcaster.clone(),
+                        slot,
+                    ),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    log::error!(
+                        "Hit {}s timeout for slot: {}",
+                        RUN_SLOT_LIMIT_SECS,
+                        slot.number
+                    );
+                    Ok(())
+                })
+                .unwrap_or_else(|e| {
+                    log::error!("Error when running for slot: {} - {:?}", slot.number, e);
+                });
+            }
+        })
+        .await;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
 
-    let mut gofer_cmd = std::env::var("GOFER_CMD")?; // Assumes that GOFER_CMD env variable is set
-                                                     // to the gofer binary
+    // Assumes that GOFER_CMD env variable is set to the gofer binary
+    let mut gofer_cmd = std::env::var("GOFER_CMD")?;
     gofer_cmd.push_str(" prices --norpc ETH/USD");
     log::debug!("Gofer command: {}", gofer_cmd);
 
-    let price_provider = GoferPriceProvider::new(&gofer_cmd);
+    let price_provider = Arc::new(GoferPriceProvider::new(&gofer_cmd));
     log::info!("Initialized price_provider");
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    let http_broadcaster = HttpMessageBroadcaster::new()?;
+    let message_broadcaster = Arc::new(HttpMessageBroadcaster::new()?);
     log::info!("Initialized message_roadcaster");
-    // TODO: Replace with a provider that returns every slot number independent of whether it's been mined
-    let slot_provider = SystemClockSlotProvider::new();
+    // It's hard to have the slot provider be sent across threads, own half of the notification
+    // channel, and be able to drop the other half of the channel when the slot provider is
+    // dropped. Room for improvement here.
+    let (tx, rx) = mpsc::channel(1);
+    let slot_provider = SystemClockSlotProvider::new(tx);
     log::info!("Initialized slot_provider");
 
     run_oracle_node(
         price_provider,
         message_generator,
-        http_broadcaster,
+        message_broadcaster,
         slot_provider,
+        rx,
     )
     .await?;
 
@@ -150,22 +170,25 @@ mod tests {
         // Create output directory if it doesn't exist
         fs::create_dir_all("./test_data/output").unwrap();
 
-        let price_provider = GoferPriceProvider::new("cat ./test_data/input.json");
+        let price_provider = Arc::new(GoferPriceProvider::new("cat ./test_data/input.json"));
 
         let signature_provider = PrivateKeySignatureProvider::random();
         let public_key = signature_provider.get_public_key().unwrap();
         let message_generator = MessageGenerator::new(Box::new(signature_provider));
         let output_files_before = get_output_files();
-        let message_broadcaster =
-            JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
+        let message_broadcaster = Arc::new(
+            JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap(),
+        );
 
-        let slot_provider = SystemClockSlotProvider::stop_after_num_slots(1);
+        let (tx, rx) = mpsc::channel(1);
+        let slot_provider = SystemClockSlotProvider::new_with_max_count(tx, 1);
 
         run_oracle_node(
             price_provider,
             message_generator,
             message_broadcaster,
             slot_provider,
+            rx,
         )
         .await
         .unwrap();
