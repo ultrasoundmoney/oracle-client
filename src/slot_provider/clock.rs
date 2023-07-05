@@ -18,10 +18,8 @@ const MAX_SLOTS: usize = 32;
 /// Much of our code depends on what the current slot is, and wants to answer as fast as possible,
 /// therefore we sometimes want to align our code with the start of the slot.
 async fn wait_until_next_slot() {
-    let current_slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
-    let next_slot = Slot {
-        number: current_slot.number + 1,
-    };
+    let current_slot = Slot::now();
+    let next_slot = current_slot + 1;
     let next_slot_start = next_slot.to_date_time();
     // NOTE: doesn't account for leap seconds.
     let seconds_until_next_slot = next_slot_start.timestamp() - Utc::now().timestamp();
@@ -60,11 +58,11 @@ impl SystemClockSlotProvider {
                 IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS.into())));
 
             while (interval_stream.next().await).is_some() {
-                let slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
+                let slot = Slot::now();
 
                 log::debug!(
                     "Interval stream ticked, adding next slot to buffer {}",
-                    slot.number
+                    slot
                 );
 
                 let mut slots = provider_clone.slots.lock().await;
@@ -78,7 +76,7 @@ impl SystemClockSlotProvider {
                         .expect("Queue to contain slots after checking length");
                     log::info!(
                         "Slots buffer full, dropping oldest slot {} from buffer",
-                        oldest_slot.number
+                        oldest_slot
                     );
                 }
                 slots.push_back(slot);
@@ -135,10 +133,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_wait_until_next_slot() {
-        let current_slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
-        let next_slot = Slot {
-            number: current_slot.number + 1,
-        };
+        let current_slot = Slot::now();
+        let next_slot = current_slot + 1;
         wait_until_next_slot().await; // Function to test
         let now = Utc::now();
 

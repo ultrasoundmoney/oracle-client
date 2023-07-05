@@ -7,7 +7,7 @@ use crate::message_broadcaster::{
 };
 use crate::price_provider::{Price, PRECISION_FACTOR};
 use crate::signature_provider::SignatureProvider;
-use crate::slot_provider::Slot;
+use crate::slot_provider::slot::Slot;
 
 pub const INTERVAL_STEP_DECIMALS: u32 = 2;
 pub const INTERVAL_PRECISION_FACTOR: u64 = 10u64.pow(INTERVAL_STEP_DECIMALS);
@@ -28,12 +28,11 @@ impl MessageGenerator {
     }
 
     pub fn generate_oracle_message(&self, price: Price, slot: Slot) -> Result<OracleMessage> {
-        let slot_number = slot.number;
         let interval_inclusion_messages = self
-            .generate_signed_interval_inclusion_messages(price.value, slot_number)
+            .generate_signed_interval_inclusion_messages(price.value, slot)
             .wrap_err("Failed to generate interval_inclusion_messages")?;
         let value_message = self
-            .generate_signed_price_value_message(price, slot_number)
+            .generate_signed_price_value_message(price, slot)
             .wrap_err("Failed to generate value message")?;
         let validator_public_key = self
             .signature_provider
@@ -65,7 +64,7 @@ impl MessageGenerator {
     fn generate_signed_interval_inclusion_messages(
         &self,
         price_value: u64,
-        slot_number: u64,
+        slot_number: Slot,
     ) -> Result<Vec<SignedIntervalInclusionMessage>> {
         let upper_bound = self.get_upper_bound(price_value);
         let lower_bound = self.get_lower_bound(price_value);
@@ -84,7 +83,7 @@ impl MessageGenerator {
             .map(|value| IntervalInclusionMessage {
                 value,
                 interval_size: INTERVAL_SIZE_BASIS_POINTS,
-                slot_number,
+                slot_number: slot_number.0,
             })
             .collect::<Vec<IntervalInclusionMessage>>();
 
@@ -112,9 +111,12 @@ impl MessageGenerator {
     fn generate_signed_price_value_message(
         &self,
         price: Price,
-        slot_number: u64,
+        slot_number: Slot,
     ) -> Result<SignedPriceValueMessage> {
-        let price_value_message = PriceValueMessage { price, slot_number };
+        let price_value_message = PriceValueMessage {
+            price,
+            slot_number: slot_number.0,
+        };
         let price_value_ssz = price_value_message.as_ssz_bytes();
         let price_value_signature = self
             .signature_provider
@@ -147,7 +149,7 @@ mod tests {
         let price = Price {
             value: 1000 * PRECISION_FACTOR,
         };
-        let slot = Slot { number: 1 };
+        let slot = Slot(1);
 
         let oracle_message = message_generator
             .generate_oracle_message(price.clone(), slot.clone())
@@ -160,11 +162,7 @@ mod tests {
             .value
             .eq(&price.value));
 
-        assert!(oracle_message
-            .value_message
-            .message
-            .slot_number
-            .eq(&slot.number));
+        assert!(oracle_message.value_message.message.slot_number.eq(&slot.0));
         assert!(oracle_message.value_message.signature.verify(
             &oracle_message.validator_public_key,
             signature_provider
@@ -183,7 +181,7 @@ mod tests {
         let price = Price {
             value: 1000 * PRECISION_FACTOR,
         };
-        let slot = Slot { number: 1 };
+        let slot = Slot(1);
 
         let oracle_message = message_generator
             .generate_oracle_message(price.clone(), slot.clone())
@@ -215,7 +213,7 @@ mod tests {
                 signature_provider
                     .get_message_digest(&interval_inclusion_message.message.as_ssz_bytes())
             ));
-            assert_eq!(interval_inclusion_message.message.slot_number, slot.number);
+            assert_eq!(interval_inclusion_message.message.slot_number, slot.0);
             assert_eq!(
                 interval_inclusion_message.message.interval_size,
                 INTERVAL_SIZE_BASIS_POINTS
