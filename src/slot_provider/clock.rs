@@ -59,7 +59,7 @@ impl SystemClockSlotProvider {
             let mut interval_stream =
                 IntervalStream::new(interval(Duration::from_secs(SLOT_PERIOD_SECONDS.into())));
 
-            while let Some(_) = interval_stream.next().await {
+            while (interval_stream.next().await).is_some() {
                 let slot = Slot::from_timestamp(Utc::now().timestamp() as u64).unwrap();
 
                 log::debug!(
