@@ -78,7 +78,7 @@ mod tests {
 
         let signature_provider = PrivateKeySignatureProvider::random();
         let message = MessageGenerator::new(Box::new(signature_provider))
-            .generate_oracle_message(Price { value: 10 }, Slot { number: 1 })?;
+            .generate_oracle_message(Price { value: 10 }, Slot(1))?;
 
         let mock = server
             .mock("POST", "/")

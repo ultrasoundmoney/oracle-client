@@ -15,7 +15,7 @@ use price_provider::{gofer::GoferPriceProvider, PriceProvider, PRECISION_FACTOR}
 mod signature_provider;
 use signature_provider::private_key::PrivateKeySignatureProvider;
 mod slot_provider;
-use slot_provider::{clock::SystemClockSlotProvider, Slot, SlotProvider};
+use slot_provider::{clock::SystemClockSlotProvider, slot::Slot, SlotProvider};
 
 const MAX_CONCURRENT_SLOTS: usize = 8;
 const RUN_SLOT_LIMIT_SECS: u64 = 24;
@@ -26,8 +26,8 @@ async fn run_single_slot(
     message_broadcaster: Arc<impl MessageBroadcaster>,
     slot: Slot,
 ) -> Result<()> {
-    log::info!("Running for slot: {}", slot.number);
-    let slot_number = slot.number;
+    log::info!("Running for slot: {}", slot);
+    let slot_number = slot;
     let start_time = chrono::Utc::now().timestamp();
     let price = price_provider
         .get_price()
@@ -70,7 +70,7 @@ async fn run_oracle_node(
             if let Some(slot) = slot_provider.get_last_slot().await {
                 log::debug!(
                     "processing slot with number: {}, slot start: {}, processing started at: {}",
-                    slot.number,
+                    slot,
                     slot.to_date_time(),
                     Utc::now()
                 );
@@ -85,15 +85,11 @@ async fn run_oracle_node(
                 )
                 .await
                 .unwrap_or_else(|_| {
-                    log::error!(
-                        "Hit {}s timeout for slot: {}",
-                        RUN_SLOT_LIMIT_SECS,
-                        slot.number
-                    );
+                    log::error!("Hit {}s timeout for slot: {}", RUN_SLOT_LIMIT_SECS, slot);
                     Ok(())
                 })
                 .unwrap_or_else(|e| {
-                    log::error!("Error when running for slot: {} - {:?}", slot.number, e);
+                    log::error!("Error when running for slot: {} - {:?}", slot, e);
                 });
             }
         })
