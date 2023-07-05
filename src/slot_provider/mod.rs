@@ -39,7 +39,7 @@ impl Slot {
         }
     }
 
-    pub fn to_date_time(&self) -> DateTime<Utc> {
+    pub fn to_date_time(self) -> DateTime<Utc> {
         *BEACON_GENESIS + Duration::seconds(self.number as i64 * SLOT_PERIOD_SECONDS as i64)
     }
 }
