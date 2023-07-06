@@ -1,13 +1,15 @@
 use eyre::{Result, WrapErr};
 use ssz::Encode;
 
-use crate::message_broadcaster::{
-    IntervalInclusionMessage, OracleMessage, PriceValueMessage, SignedIntervalInclusionMessage,
-    SignedPriceValueMessage,
+use crate::{
+    message_broadcaster::{
+        IntervalInclusionMessage, OracleMessage, PriceValueMessage, SignedIntervalInclusionMessage,
+        SignedPriceValueMessage,
+    },
+    price_provider::{Price, PRECISION_FACTOR},
+    signature_provider::SignatureProvider,
+    slot::Slot,
 };
-use crate::price_provider::{Price, PRECISION_FACTOR};
-use crate::signature_provider::SignatureProvider;
-use crate::slot_provider::slot::Slot;
 
 pub const INTERVAL_STEP_DECIMALS: u32 = 2;
 pub const INTERVAL_PRECISION_FACTOR: u64 = 10u64.pow(INTERVAL_STEP_DECIMALS);

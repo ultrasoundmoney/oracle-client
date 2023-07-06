@@ -14,6 +14,6 @@ pub struct Price {
     pub value: u64, // TODO: Check if we need to add further info here such as timestamp
 }
 
-pub trait PriceProvider {
+pub trait PriceProvider: Send + Sync {
     fn get_price(&self) -> Result<Price>;
 }
