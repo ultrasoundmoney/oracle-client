@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Add};
+use std::fmt::Display;
 
 use chrono::{DateTime, Duration, Utc};
 use eyre::Result;
@@ -43,19 +43,15 @@ impl Slot {
     pub fn now() -> Self {
         Self::from_date_time_round_down(Utc::now()).expect("Expect now to be after beacon genesis")
     }
+
+    pub fn next(&self) -> Self {
+        Slot(self.0 + 1)
+    }
 }
 
 impl From<Slot> for DateTime<Utc> {
     fn from(slot: Slot) -> Self {
         *BEACON_GENESIS + Duration::seconds(slot.0 as i64 * Slot::SLOT_PERIOD_SECONDS as i64)
-    }
-}
-
-impl Add<u64> for Slot {
-    type Output = Self;
-
-    fn add(self, rhs: u64) -> Self::Output {
-        Slot(self.0 + rhs)
     }
 }
 
@@ -119,8 +115,8 @@ mod tests {
     #[test]
     fn slot_add() {
         let slot = Slot(10);
-        let result = slot + 5;
-        assert_eq!(result, Slot(15));
+        let result = slot.next();
+        assert_eq!(result, Slot(11));
     }
 
     #[test]

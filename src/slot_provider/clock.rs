@@ -19,7 +19,7 @@ const MAX_SLOTS: usize = 32;
 /// therefore we sometimes want to align our code with the start of the slot.
 async fn wait_until_next_slot() {
     let current_slot = Slot::now();
-    let next_slot = current_slot + 1;
+    let next_slot = current_slot.next();
     let next_slot_start = next_slot.to_date_time();
     // NOTE: doesn't account for leap seconds.
     let seconds_until_next_slot = next_slot_start.timestamp() - Utc::now().timestamp();
@@ -134,7 +134,7 @@ mod tests {
     #[tokio::test]
     async fn test_wait_until_next_slot() {
         let current_slot = Slot::now();
-        let next_slot = current_slot + 1;
+        let next_slot = current_slot.next();
         wait_until_next_slot().await; // Function to test
         let now = Utc::now();
 
