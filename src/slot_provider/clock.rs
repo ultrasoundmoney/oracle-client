@@ -51,7 +51,7 @@ impl SystemClockSlotProvider {
             log::debug!("Waiting until next slot to start interval stream");
             wait_until_next_slot().await;
 
-            // TODO: this is probably broken for leap seconds. A slot is sometimes 11s, sometimes
+            // This is probably broken for leap seconds. A slot is sometimes 11s, sometimes
             // 13s long. Assuming IntervalStream waits a number of real seconds, not unix timestamp
             // seconds, we'd become misaligned.
             let mut interval_stream =
@@ -68,7 +68,7 @@ impl SystemClockSlotProvider {
                 let mut slots = provider_clone.slots.lock().await;
                 // When we have buffered MAX_SLOTS slots, we drop the oldest slot from the buffer.
                 // Slots are picked up LIFO, the oldest slot is unlikely to ever get processed.
-                // TODO: consider adding a lifetime to a slot instead and picking a buffer which
+                // Consider adding a lifetime to a slot instead and picking a buffer which
                 // can always accomodate SLOT_LIFETIME / SLOT_PERIOD_SECONDS slots.
                 if slots.len() == MAX_SLOTS {
                     let oldest_slot = slots
