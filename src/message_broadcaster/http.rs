@@ -65,7 +65,7 @@ mod tests {
 
     use crate::{
         message_generator::MessageGenerator, price_provider::Price,
-        signature_provider::private_key::PrivateKeySignatureProvider, slot_provider::Slot,
+        signature_provider::private_key::PrivateKeySignatureProvider, slot::Slot,
     };
 
     use super::*;
