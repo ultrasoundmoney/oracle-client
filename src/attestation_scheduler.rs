@@ -60,15 +60,15 @@ pub struct SystemClockAttestationScheduler {
 
 impl SystemClockAttestationScheduler {
     pub fn new(
-        message_broadcaster: impl MessageBroadcaster + 'static + Send + Sync,
+        message_broadcaster: Box<dyn MessageBroadcaster>,
         message_generator: MessageGenerator,
-        price_provider: impl PriceProvider + 'static + Send + Sync,
+        price_provider: Box<dyn PriceProvider>,
         slots_to_run: Option<u64>,
     ) -> Self {
         Self {
-            message_broadcaster: Box::new(message_broadcaster),
+            message_broadcaster,
             message_generator,
-            price_provider: Box::new(price_provider),
+            price_provider,
             slots_to_run: Arc::new(Mutex::new(slots_to_run)),
         }
     }
@@ -223,9 +223,9 @@ mod tests {
             JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
         let attestation_scheduler = SystemClockAttestationScheduler::new(
-            message_broadcaster,
+            Box::new(message_broadcaster),
             message_generator,
-            price_provider,
+            Box::new(price_provider),
             Some(1),
         );
 

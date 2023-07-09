@@ -22,14 +22,14 @@ async fn main() -> Result<()> {
     gofer_cmd.push_str(" prices --norpc ETH/USD");
     log::debug!("Gofer command: {}", gofer_cmd);
 
-    let price_provider = GoferPriceProvider::new(&gofer_cmd);
+    let price_provider = Box::new(GoferPriceProvider::new(&gofer_cmd));
     log::info!("Initialized price_provider");
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    let message_broadcaster = HttpMessageBroadcaster::new()?;
+    let message_broadcaster = Box::new(HttpMessageBroadcaster::new()?);
     log::info!("Initialized message_roadcaster");
 
     let attestation_scheduler = SystemClockAttestationScheduler::new(
