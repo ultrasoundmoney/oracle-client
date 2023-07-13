@@ -1,0 +1,6 @@
+version: "3.8"
+services:
+  gofer:
+    image: ghcr.io/chronicleprotocol/gofer-cli:latest
+    ports:
+      - 9200:9200
