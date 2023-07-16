@@ -22,7 +22,7 @@ impl GoferPriceProvider {
     pub fn new_with_pair(gofer_url: &str, pair: String) -> GoferPriceProvider {
         GoferPriceProvider {
             gofer_url: gofer_url.to_string(),
-            pair: pair,
+            pair,
         }
     }
 
