@@ -213,7 +213,7 @@ mod tests {
 
         // Create output directory if it doesn't exist
         fs::create_dir_all("./test_data/output").unwrap();
-        
+
         let mut server = mockito::Server::new();
 
         let response_json = r#"{
