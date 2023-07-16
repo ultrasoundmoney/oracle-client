@@ -51,18 +51,18 @@ async fn wait_until_next_slot() {
     .await;
 }
 
-pub struct SystemClockAttestationScheduler {
-    message_broadcaster: Box<dyn MessageBroadcaster>,
+pub struct SystemClockAttestationScheduler<A: MessageBroadcaster, B: PriceProvider> {
+    message_broadcaster: A,
     message_generator: MessageGenerator,
-    price_provider: Box<dyn PriceProvider>,
+    price_provider: B,
     slots_to_run: Arc<Mutex<Option<u64>>>,
 }
 
-impl SystemClockAttestationScheduler {
+impl<A: MessageBroadcaster, B: PriceProvider> SystemClockAttestationScheduler<A, B> {
     pub fn new(
-        message_broadcaster: Box<dyn MessageBroadcaster>,
+        message_broadcaster: A,
         message_generator: MessageGenerator,
-        price_provider: Box<dyn PriceProvider>,
+        price_provider: B,
         slots_to_run: Option<u64>,
     ) -> Self {
         Self {
@@ -247,9 +247,9 @@ mod tests {
             JsonFileMessageBroadcaster::new(Some("test_data/output".to_string())).unwrap();
 
         let attestation_scheduler = SystemClockAttestationScheduler::new(
-            Box::new(message_broadcaster),
+            message_broadcaster,
             message_generator,
-            Box::new(price_provider),
+            price_provider,
             Some(1),
         );
 

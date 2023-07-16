@@ -19,15 +19,14 @@ async fn main() -> Result<()> {
 
     let gofer_url = std::env::var("GOFER_URL").unwrap_or("http://localhost:9200/price".to_string());
     log::debug!("Gofer URL: {}", gofer_url);
-
-    let price_provider = Box::new(GoferPriceProvider::new(gofer_url.as_str()));
+    let price_provider = GoferPriceProvider::new(gofer_url.as_str());
     log::info!("Initialized price_provider");
     // TODO: Replace with a signature provider that lets the operator use their validator key
     let signature_provider = PrivateKeySignatureProvider::random();
     log::info!("Initialized signature_provider");
     let message_generator = MessageGenerator::new(Box::new(signature_provider));
     log::info!("Initialized message_generator");
-    let message_broadcaster = Box::new(HttpMessageBroadcaster::new()?);
+    let message_broadcaster = HttpMessageBroadcaster::new()?;
     log::info!("Initialized message_roadcaster");
 
     let attestation_scheduler = SystemClockAttestationScheduler::new(
