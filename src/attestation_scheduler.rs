@@ -20,7 +20,7 @@ use crate::{
 };
 
 // We set a limit,, although the fact slots appear every 12s, and attestations can take at most
-// 24s to process, means we run at most 2 attestations at any time long as timeouts are handled
+// 24s to process, means we run at most 2 attestations at any time as long as timeouts are handled
 // quickly.
 const MAX_CONCURRENT_SLOTS: usize = 2;
 const ATTESTATION_TIMEOUT: u64 = 24;
